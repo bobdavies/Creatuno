@@ -1,26 +1,233 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans), var(--font-montserrat);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* ── Creatuno Brand Color Scales ── */
+  /* Primary 1: Golden Yellow (#FEC714) */
+  --color-brand-50: #FFFCE8;
+  --color-brand-100: #FFF8C5;
+  --color-brand-200: #FFF08A;
+  --color-brand-300: #FFE34F;
+  --color-brand-400: #FED52A;
+  --color-brand-500: #FEC714;
+  --color-brand-600: #E1A504;
+  --color-brand-700: #BA7B07;
+  --color-brand-800: #975F0D;
+  --color-brand-900: #7C4E10;
+
+  /* Primary 2: Purple (#7E5DA7) */
+  --color-brand-purple-50: #F5F1FA;
+  --color-brand-purple-100: #EBE4F5;
+  --color-brand-purple-200: #D9CCE9;
+  --color-brand-purple-300: #C0A8D9;
+  --color-brand-purple-400: #A17FC4;
+  --color-brand-purple-500: #7E5DA7;
+  --color-brand-purple-600: #6B4E90;
+  --color-brand-purple-700: #583F79;
+  --color-brand-purple-800: #4A3565;
+  --color-brand-purple-900: #3D2D54;
+
+  /* Neutral Dark (#1B0F28) */
+  --color-brand-dark: #1B0F28;
+  --color-brand-dark-lighter: #261838;
+  --color-brand-dark-lightest: #322148;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Creatuno Brand Palette - Yellow/Purple primary, Dark theme default */
+:root {
+  --radius: 0.625rem;
+  --background: #FBFCFE;
+  --foreground: #1B0F28;
+  --card: #FFFFFF;
+  --card-foreground: #1B0F28;
+  --popover: #FFFFFF;
+  --popover-foreground: #1B0F28;
+  /* Brand yellow primary */
+  --primary: #FEC714;
+  --primary-foreground: #1B0F28;
+  --secondary: #F5F1FA;
+  --secondary-foreground: #1B0F28;
+  --muted: #F5F1FA;
+  --muted-foreground: #6B6B7B;
+  --accent: #EBE4F5;
+  --accent-foreground: #1B0F28;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #E8E2EF;
+  --input: #E8E2EF;
+  --ring: #7E5DA7;
+  --chart-1: #FEC714;
+  --chart-2: #7E5DA7;
+  --chart-3: #A17FC4;
+  --chart-4: #FED52A;
+  --chart-5: #6B4E90;
+  --sidebar: #FBFCFE;
+  --sidebar-foreground: #1B0F28;
+  --sidebar-primary: #7E5DA7;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F5F1FA;
+  --sidebar-accent-foreground: #1B0F28;
+  --sidebar-border: #E8E2EF;
+  --sidebar-ring: #7E5DA7;
+}
+
+/* Dark theme - default for Creatuno */
+.dark {
+  --background: #1B0F28;
+  --foreground: #FBFCFE;
+  --card: #261838;
+  --card-foreground: #FBFCFE;
+  --popover: #261838;
+  --popover-foreground: #FBFCFE;
+  /* Brand yellow stays vibrant in dark mode */
+  --primary: #FEC714;
+  --primary-foreground: #1B0F28;
+  --secondary: #322148;
+  --secondary-foreground: #FBFCFE;
+  --muted: #322148;
+  --muted-foreground: #A098AE;
+  --accent: #3D2D54;
+  --accent-foreground: #FBFCFE;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #3D2D54;
+  --input: #322148;
+  --ring: #FEC714;
+  --chart-1: #FEC714;
+  --chart-2: #A17FC4;
+  --chart-3: #FED52A;
+  --chart-4: #7E5DA7;
+  --chart-5: #C0A8D9;
+  --sidebar: #1B0F28;
+  --sidebar-foreground: #FBFCFE;
+  --sidebar-primary: #FEC714;
+  --sidebar-primary-foreground: #1B0F28;
+  --sidebar-accent: #322148;
+  --sidebar-accent-foreground: #FBFCFE;
+  --sidebar-border: #3D2D54;
+  --sidebar-ring: #FEC714;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-montserrat), sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom utilities for Creatuno */
+@layer utilities {
+  /* Safe area insets for mobile devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Mobile bottom navigation spacing */
+  .mb-nav {
+    margin-bottom: 4rem;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch-friendly tap targets */
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Low bandwidth image placeholder */
+  .img-placeholder {
+    background: linear-gradient(135deg, var(--muted) 0%, var(--accent) 100%);
+  }
+}
+
+/* Animation classes for offline/sync states */
+@keyframes pulse-brand {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-orange {
+  animation: pulse-brand 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===== Animations ===== */
+
+/* Marquee for infinite scroll */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Ensure proper rendering on mobile */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
 }

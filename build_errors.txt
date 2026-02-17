@@ -1,0 +1,173 @@
+﻿Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  ┬╖ serverActions
+
+node.exe : ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: 
+https://nextjs.org/docs/messages/middleware-to-proxy
+At line:1 char:1
++ & "C:\nvm4w\nodejs/node.exe" "C:\nvm4w\nodejs/node_modules/npm/bin/np ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá The "middle...leware-to-proxy:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 8 errors:
+./src/app/(app)/dashboard/page.tsx:742:28
+Parsing ecmascript source code failed
+[0m [90m 740 |[39m                   [33m<[39m[33m/[39m[33mLink[39m[33m>[39m
+ [90m 741 |[39m                 [33m<[39m[33m/[39m[33mButton[39m[33m>[39m
+[31m[1m>[22m[39m[90m 742 |[39m               [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m     |[39m                            [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 743 |[39m             ) [33m:[39m (
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39
+m
+[31m[1m>[22m[39m[90m 744 |[39m               [33m<[39m[33mmotion[39m[33m.[39mdiv
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 745 |[39m                 className[33m=[39m[32m"rounded-2xl border-2 border-dashed border-border/40 p-6 
+text-center"[39m
+ [90m 746 |[39m                 variants[33m=[39m{fadeUp}
+ [90m 747 |[39m                 initial[33m=[39m[32m"hidden"[39m[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/(app)/dashboard/portfolios/[id]/edit/page.tsx:390:22
+Parsing ecmascript source code failed
+[0m [90m 388 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 389 |[39m       )}
+[31m[1m>[22m[39m[90m 390 |[39m         [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m     |[39m                      [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 391 |[39m
+ [90m     |[39m [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 392 |[39m         {[90m/* ΓöüΓöüΓöü PROJECTS SECTION ΓöüΓöüΓöü */[39m}
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 393 |[39m         [33m<[39m[33msection[39m className[33m=[39m[32m"mb-16"[39m[33m>[39m
+ [90m 394 |[39m           [33m<[39m[33mmotion[39m[33m.[39mdiv
+ [90m 395 |[39m             className[33m=[39m[32m"flex items-center justify-between mb-8"[39m[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/(app)/feed/page.tsx:963:31
+Parsing ecmascript source code failed
+[0m [90m 961 |[39m                 )}
+ [90m 962 |[39m               [33m<[39m[33m/[39m[33mAnimatePresence[39m[33m>[39m
+[31m[1m>[22m[39m[90m 963 |[39m               [33m<[39m[33m/[39m[33mSpotlightCard[39m[33m>[39m
+ [90m     |[39m                               [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 964 |[39m             [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 965 |[39m
+ [90m 966 |[39m             {[90m/* Category Filter Tabs */[39m}
+ [90m 967 |[39m             [33m<[39m[33mmotion[39m[33m.[39mdiv[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/(app)/mentorship/page.tsx:1097:23
+Parsing ecmascript source code failed
+[0m [90m 1095 |[39m           [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 1096 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 1097 |[39m       [33m<[39m[33m/[39m[33mSpotlightCard[39m[33m>[39m
+ [90m      |[39m                       [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 1098 |[39m     [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m      |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 1099 |[39m   )
+ [90m 1100 |[39m }
+ [90m 1101 |[39m[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/(app)/search/page.tsx:693:29
+Parsing ecmascript source code failed
+[0m [90m 691 |[39m                           )}
+ [90m 692 |[39m                         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 693 |[39m                       [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m     |[39m                             [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 694 |[39m                 [33m<[39m[33m/[39m[33mLink[39m[33m>[39m
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39
+m
+ [90m 695 |[39m                       [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m 696 |[39m                     )
+ [90m 697 |[39m                   })}[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/blog/page.tsx:178:33
+Parsing ecmascript source code failed
+[0m [90m 176 |[39m                     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 177 |[39m                   [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 178 |[39m                 [33m<[39m[33m/[39m[33mSpotlightCard[39m[33m>[39m
+ [90m     |[39m                                 [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 179 |[39m               [33m<[39m[33m/[39m[33mAnimatedSection[39m[33m>[39m
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 180 |[39m             ))}
+ [90m 181 |[39m           [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 182 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/app/contact/page.tsx:293:37
+Parsing ecmascript source code failed
+[0m [90m 291 |[39m                         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 292 |[39m                       [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 293 |[39m                     [33m<[39m[33m/[39m[33mSpotlightCard[39m[33m>[39m
+ [90m     |[39m                                     [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 294 |[39m                   [33m<[39m[33m/[39m[33mAnimatedSection[39m[33m>[39m
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39
+m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 295 |[39m                 )
+ [90m 296 |[39m               })}
+ [90m 297 |[39m[0m
+
+Expected '</', got 'jsx text'
+
+
+./src/components/portfolio/contact-creator-button.tsx:180:31
+Parsing ecmascript source code failed
+[0m [90m 178 |[39m                 [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 179 |[39m               )}
+[31m[1m>[22m[39m[90m 180 |[39m               [33m<[39m[33m/[39m[33mSpotlightCard[39m[33m>[39m
+ [90m     |[39m                               [31m[1m^[22m[39m
+[31m[1m>[22m[39m[90m 181 |[39m             [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m     |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 182 |[39m           [33m<[39m[33m/[39m[33mmotion[39m[33m.[39mdiv[33m>[39m
+ [90m 183 |[39m         )}
+ [90m 184 |[39m       [33m<[39m[33m/[39m[33mAnimatePresence[39m[33m>[39m[0m
+
+Expected '</', got 'jsx text'
+
+Import trace:
+  Server Component:
+    ./src/components/portfolio/contact-creator-button.tsx
+    ./src/app/portfolio/[username]/[slug]/page.tsx
+
+
+    at <unknown> (./src/app/(app)/dashboard/page.tsx:742:28)
+    at <unknown> (./src/app/(app)/dashboard/portfolios/[id]/edit/page.tsx:390:22)
+    at <unknown> (./src/app/(app)/feed/page.tsx:963:31)
+    at <unknown> (./src/app/(app)/mentorship/page.tsx:1097:23)
+    at <unknown> (./src/app/(app)/search/page.tsx:693:29)
+    at <unknown> (./src/app/blog/page.tsx:178:33)
+    at <unknown> (./src/app/contact/page.tsx:293:37)
+    at <unknown> (./src/components/portfolio/contact-creator-button.tsx:180:31)

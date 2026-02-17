@@ -1,0 +1,85 @@
+{
+  "name": "Creatuno",
+  "short_name": "Creatuno",
+  "description": "Empowering Local Talent through Digital Visibility - Build professional portfolios, find opportunities, and connect with mentors.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1B0F28",
+  "theme_color": "#FEC714",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "productivity", "social"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.svg",
+      "sizes": "72x72",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96x96.svg",
+      "sizes": "96x96",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128x128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144x144.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152x152.svg",
+      "sizes": "152x152",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384x384.svg",
+      "sizes": "384x384",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Portfolio",
+      "short_name": "Portfolio",
+      "description": "View and edit your portfolio",
+      "url": "/dashboard/portfolios"
+    },
+    {
+      "name": "Village Square",
+      "short_name": "Feed",
+      "description": "View community feed",
+      "url": "/feed"
+    },
+    {
+      "name": "Find Opportunities",
+      "short_name": "Jobs",
+      "description": "Browse job opportunities",
+      "url": "/opportunities"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
