@@ -1174,7 +1174,7 @@ export default function FeedPage() {
                     </div>
                     <div className="space-y-3">
                       {suggestedUsers.map((u) => (
-                        <Link key={u.id} href={`/profile/${u.id}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors group">
+                        <Link key={u.id} href={`/portfolio/user/${u.id}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors group">
                           <Avatar className="w-8 h-8 flex-shrink-0">
                             <AvatarImage src={u.avatarUrl || undefined} />
                             <AvatarFallback className="text-[9px] bg-gradient-to-br from-brand-purple-500 to-brand-500 text-brand-dark font-bold">{u.name[0]}</AvatarFallback>

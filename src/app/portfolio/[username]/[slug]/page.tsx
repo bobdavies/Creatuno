@@ -29,11 +29,11 @@ async function getPortfolio(username: string, slug: string) {
   try {
     const supabase = await createServerClient()
 
-    // Resolve username to user_id first
+    // The [username] URL param may contain profiles.id (UUID) or profiles.user_id (Clerk ID)
     const { data: profile } = await supabase
       .from('profiles')
       .select('user_id')
-      .eq('username', username)
+      .or(`id.eq.${username},user_id.eq.${username}`)
       .single()
 
     if (!profile) {

@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
           slug,
           user_id,
           profiles:user_id (
+            id,
             full_name
           )
         `)
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
           title: p.title,
           subtitle: (p.profiles as any)?.full_name || 'Unknown Creator',
           description: p.description || p.tagline,
-          link: `/portfolio/${p.slug}`,
+          link: `/portfolio/${(p.profiles as any)?.id || p.user_id}/${p.slug}`,
           tags: [],
         })))
       }
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
           subtitle: u.location ? `${u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : 'Creative'} • ${u.location}` : (u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : 'Creative'),
           description: u.bio,
           imageUrl: u.avatar_url,
-          link: `/profile/${u.user_id}`,
+          link: `/portfolio/user/${u.user_id}`,
           tags: u.skills?.slice(0, 3) || [],
         })))
       }
