@@ -2,11 +2,13 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { LandingHeroButtons } from './landing-hero-buttons'
-import Aurora from '@/components/Aurora'
 import BlurText from '@/components/BlurText'
 import RotatingText from '@/components/RotatingText'
+
+const Aurora = dynamic(() => import('@/components/Aurora'), { ssr: false })
 
 /* ------------------------------------------------------------------ */
 /*  Image sets & labels for each card position                        */

@@ -31,7 +31,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env.local
+#.env.local
 
 # vercel
 .vercel
@@ -43,3 +43,11 @@ next-env.d.ts
 # build logs
 .log/
 *.log
+
+# next-pwa generated files (regenerated on each build)
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
+/public/worker-*.js
+/public/fallback-*.js

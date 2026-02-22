@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { publicCachedJson } from '@/lib/api/cache-headers'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest) {
       return 0
     })
 
-    return NextResponse.json({ results: results.slice(0, 30) })
+    return publicCachedJson({ results: results.slice(0, 30) }, 30, 60)
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json({ results: [] })

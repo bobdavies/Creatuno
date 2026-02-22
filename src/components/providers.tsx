@@ -1,42 +1,14 @@
 'use client'
 
-import { useEffect } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider, useTheme } from 'next-themes'
 import { UserSessionProvider } from '@/components/providers/user-session-provider'
 import { LanguageProvider } from '@/lib/i18n/context'
+import { NetworkAwareProvider } from '@/components/providers/network-aware-provider'
 
 interface ProvidersProps {
   children: React.ReactNode
-}
-
-/* ── Register Service Worker once on mount ── */
-function ServiceWorkerRegistration() {
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('SW registered, scope:', registration.scope)
-          // Listen for updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'activated') {
-                  console.log('New service worker activated')
-                }
-              })
-            }
-          })
-        })
-        .catch((err) => {
-          console.warn('SW registration failed:', err)
-        })
-    }
-  }, [])
-  return null
 }
 
 /* ── Inner wrapper that reads the resolved theme for Clerk + Toaster ── */
@@ -72,9 +44,11 @@ function ThemeAwareProviders({ children }: { children: React.ReactNode }) {
       }}
     >
       <UserSessionProvider>
-        <LanguageProvider>
-          {children}
-        </LanguageProvider>
+        <NetworkAwareProvider>
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
+        </NetworkAwareProvider>
       </UserSessionProvider>
       <Toaster
         position="top-center"
@@ -98,7 +72,6 @@ export function Providers({ children }: ProvidersProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <ServiceWorkerRegistration />
       <ThemeAwareProviders>{children}</ThemeAwareProviders>
     </ThemeProvider>
   )

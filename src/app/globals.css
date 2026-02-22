@@ -231,3 +231,29 @@
     padding-right: max(0px, env(safe-area-inset-right));
   }
 }
+
+/* ===== Data-Saver / Reduced-Data Adaptations ===== */
+
+@media (prefers-reduced-data: reduce) {
+  img:not([data-essential]) {
+    content-visibility: auto;
+  }
+  .decorative-bg,
+  .hero-gradient-overlay {
+    display: none !important;
+  }
+  video, iframe {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-pulse-orange {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

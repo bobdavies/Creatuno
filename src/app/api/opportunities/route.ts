@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch opportunities
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ opportunities: [], opportunity: null })
+    return privateCachedJson({ opportunities: [], opportunity: null })
   }
 
   try {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('Error fetching opportunity:', error)
-        return NextResponse.json({ opportunity: null })
+        return privateCachedJson({ opportunity: null })
       }
 
       const transformedOpp = opp ? {
@@ -61,23 +62,53 @@ export async function GET(request: NextRequest) {
         },
       } : null
 
-      return NextResponse.json({ opportunity: transformedOpp })
+      return privateCachedJson({ opportunity: transformedOpp })
     }
 
     // Check if requesting user's own opportunities (employer dashboard)
     const my = searchParams.get('my')
 
-    // Fetch all opportunities
+    // Cursor-based pagination params
+    const limitParam = searchParams.get('limit')
+    const limit = Math.min(Math.max(parseInt(limitParam || '20', 10) || 20, 1), 50)
+    const cursor = searchParams.get('cursor') // ISO timestamp for created_at
+
+    // Narrow select for list display (avoid large fields)
+    const listSelect = `
+      id,
+      title,
+      description,
+      type,
+      category,
+      status,
+      budget_min,
+      budget_max,
+      currency,
+      location,
+      is_remote,
+      deadline,
+      required_skills,
+      experience_level,
+      company_name,
+      applications_count,
+      created_at,
+      user_id,
+      profiles:user_id (
+        full_name,
+        avatar_url
+      )
+    `
+
+    // Fetch opportunities with cursor pagination (limit+1 to detect next page)
     let query = supabase
       .from('opportunities')
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          avatar_url
-        )
-      `)
+      .select(listSelect)
       .order('created_at', { ascending: false })
+      .limit(limit + 1)
+
+    if (cursor) {
+      query = query.lt('created_at', cursor)
+    }
 
     if (my === 'true') {
       // Employer wants their own opportunities (all statuses)
@@ -103,20 +134,26 @@ export async function GET(request: NextRequest) {
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
-    const { data: opportunities, error } = await query.limit(50)
+    const { data: rawOpportunities, error } = await query
 
     if (error) {
       console.error('Error fetching opportunities:', error)
-      return NextResponse.json({ opportunities: [] })
+      return privateCachedJson({ opportunities: [], nextCursor: null })
     }
 
+    const hasMore = (rawOpportunities?.length ?? 0) > limit
+    const opportunities = hasMore ? rawOpportunities!.slice(0, limit) : (rawOpportunities ?? [])
+    const lastItem = opportunities[opportunities.length - 1]
+    const nextCursor = hasMore && lastItem ? String(lastItem.created_at) : null
+
     // Transform data
-    const transformedOpportunities = opportunities?.map(opp => ({
+    const transformedOpportunities = opportunities.map(opp => ({
       id: opp.id,
       title: opp.title,
       description: opp.description,
       type: opp.type,
       category: opp.category,
+      status: opp.status,
       budgetMin: opp.budget_min,
       budgetMax: opp.budget_max,
       currency: opp.currency,
@@ -133,12 +170,12 @@ export async function GET(request: NextRequest) {
         fullName: (opp.profiles as any)?.full_name || 'Unknown',
         avatarUrl: (opp.profiles as any)?.avatar_url,
       },
-    })) || []
+    }))
 
-    return NextResponse.json({ opportunities: transformedOpportunities })
+    return privateCachedJson({ opportunities: transformedOpportunities, nextCursor })
   } catch (error) {
     console.error('Error in opportunities GET:', error)
-    return NextResponse.json({ opportunities: [] })
+    return privateCachedJson({ opportunities: [], nextCursor: null })
   }
 }
 

@@ -5,7 +5,15 @@ const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
-  skipWaiting: true,
+  skipWaiting: false,
+  customWorkerDir: "worker",
+  fallbacks: {
+    document: "/offline",
+  },
+  additionalManifestEntries: [
+    { url: "/offline", revision: "1" },
+    { url: "/manifest.json", revision: "1" },
+  ],
   runtimeCaching: [
     {
       // Cache Google Fonts
@@ -53,6 +61,22 @@ const withPWA = withPWAInit({
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+        },
+      },
+    },
+    {
+      // Cache the app's own GET API responses (NetworkFirst for freshness, cache for offline)
+      urlPattern: /^\/api\/.*/i,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "app-api",
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 60 * 30, // 30 minutes
+        },
+        networkTimeoutSeconds: 8,
+        matchOptions: {
+          ignoreSearch: false,
         },
       },
     },

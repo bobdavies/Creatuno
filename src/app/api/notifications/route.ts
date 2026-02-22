@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -7,7 +8,7 @@ import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/s
 export async function GET(request: NextRequest) {
   try {
     if (!isSupabaseConfiguredServer()) {
-      return NextResponse.json({ notifications: [], message: 'Supabase not configured' })
+      return privateCachedJson({ notifications: [], message: 'Supabase not configured' })
     }
 
     const { userId } = await auth()
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const unreadOnly = searchParams.get('unread_only') === 'true'
+    const cursor = searchParams.get('cursor')
+    const rawLimit = parseInt(searchParams.get('limit') ?? '20', 10)
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 50)
 
     const supabase = await createServerClient()
 
@@ -26,18 +30,28 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(limit + 1)
 
-    // Filter for unread only if requested
     if (unreadOnly) {
       query = query.eq('is_read', false)
+    }
+
+    if (cursor) {
+      query = query.lt('created_at', cursor)
     }
 
     const { data, error } = await query
 
     if (error) throw error
 
-    return NextResponse.json({ notifications: data })
+    const rows = data ?? []
+    const hasMore = rows.length > limit
+    const notifications = hasMore ? rows.slice(0, limit) : rows
+    const nextCursor = hasMore
+      ? notifications[notifications.length - 1]?.created_at ?? null
+      : null
+
+    return privateCachedJson({ notifications, nextCursor })
   } catch (error) {
     console.error('Notifications GET error:', error)
     return NextResponse.json(

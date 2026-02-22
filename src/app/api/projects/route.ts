@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -143,7 +144,7 @@ export async function GET(request: NextRequest) {
   try {
     // Check if Supabase is configured
     if (!isSupabaseConfiguredServer()) {
-      return NextResponse.json({ projects: [], message: 'Supabase not configured' })
+      return privateCachedJson({ projects: [], message: 'Supabase not configured' })
     }
 
     const { userId } = await auth()
@@ -184,7 +185,7 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ projects: data })
+    return privateCachedJson({ projects: data })
   } catch (error) {
     console.error('Project GET error:', error)
     return NextResponse.json(

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -8,7 +9,7 @@ const MENTOR_OFFER_MARKER = '__mentor_offer__'
 // GET - Fetch mentorship offers
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ offers: [] })
+    return privateCachedJson({ offers: [] })
   }
 
   const { userId } = await auth()
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
       }
 
-      return NextResponse.json({ offer })
+      return privateCachedJson({ offer })
     }
 
     // List all offers
@@ -99,13 +100,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching mentorship offers:', error)
-      return NextResponse.json({ offers: [] })
+      return privateCachedJson({ offers: [] })
     }
 
-    return NextResponse.json({ offers: offers || [] })
+    return privateCachedJson({ offers: offers || [] })
   } catch (error) {
     console.error('Error in offers GET:', error)
-    return NextResponse.json({ offers: [] })
+    return privateCachedJson({ offers: [] })
   }
 }
 

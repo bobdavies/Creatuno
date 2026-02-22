@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch user's messages (inbox or sent)
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ messages: [], count: 0 })
+    return privateCachedJson({ messages: [], count: 0 })
   }
 
   const { userId } = await auth()
@@ -16,19 +17,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const folder = searchParams.get('folder') || 'inbox' // 'inbox' or 'sent'
+    const folder = searchParams.get('folder') || 'inbox'
     const countOnly = searchParams.get('count_only') === 'true'
+    const cursor = searchParams.get('cursor')
+    const rawLimit = parseInt(searchParams.get('limit') ?? '20', 10)
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 50)
 
     const supabase = createAdminClient()
 
     if (countOnly) {
-      // Just return count of sent messages
       const { count } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
         .eq('sender_id', userId)
 
-      return NextResponse.json({ count: count ?? 0 })
+      return privateCachedJson({ count: count ?? 0 })
     }
 
     let query
@@ -56,19 +59,30 @@ export async function GET(request: NextRequest) {
         .eq('receiver_id', userId)
     }
 
-    const { data: messages, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(50)
+    query = query.order('created_at', { ascending: false }).limit(limit + 1)
+
+    if (cursor) {
+      query = query.lt('created_at', cursor)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching messages:', error)
-      return NextResponse.json({ messages: [] })
+      return privateCachedJson({ messages: [] })
     }
 
-    return NextResponse.json({ messages: messages || [] })
+    const rows = data ?? []
+    const hasMore = rows.length > limit
+    const messages = hasMore ? rows.slice(0, limit) : rows
+    const nextCursor = hasMore
+      ? messages[messages.length - 1]?.created_at ?? null
+      : null
+
+    return privateCachedJson({ messages, nextCursor })
   } catch (error) {
     console.error('Error in messages GET:', error)
-    return NextResponse.json({ messages: [] })
+    return privateCachedJson({ messages: [] })
   }
 }
 

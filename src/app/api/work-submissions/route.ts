@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -9,7 +10,7 @@ import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/s
 
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ submissions: [] })
+    return privateCachedJson({ submissions: [] })
   }
 
   const { userId } = await auth()
@@ -33,9 +34,9 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('Error fetching work submissions:', error)
-        return NextResponse.json({ submissions: [] })
+        return privateCachedJson({ submissions: [] })
       }
-      return NextResponse.json({ submissions: data || [] })
+      return privateCachedJson({ submissions: data || [] })
     } else if (role === 'employer') {
       const { data, error } = await supabase
         .from('work_submissions')
@@ -51,9 +52,9 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('Error fetching employer submissions:', error)
-        return NextResponse.json({ submissions: [] })
+        return privateCachedJson({ submissions: [] })
       }
-      return NextResponse.json({ submissions: data || [] })
+      return privateCachedJson({ submissions: data || [] })
     } else {
       const { data, error } = await supabase
         .from('work_submissions')
@@ -63,13 +64,13 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('Error fetching submissions:', error)
-        return NextResponse.json({ submissions: [] })
+        return privateCachedJson({ submissions: [] })
       }
-      return NextResponse.json({ submissions: data || [] })
+      return privateCachedJson({ submissions: data || [] })
     }
   } catch (error) {
     console.error('Error in work-submissions GET:', error)
-    return NextResponse.json({ submissions: [] })
+    return privateCachedJson({ submissions: [] })
   }
 }
 

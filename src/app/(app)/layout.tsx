@@ -2,6 +2,7 @@ import { Header } from '@/components/layout/header'
 import { MobileNav } from '@/components/layout/mobile-nav'
 import { OfflineIndicator } from '@/components/shared/offline-indicator'
 import { PWAInstallPrompt } from '@/components/shared/pwa-install-prompt'
+import { SWUpdatePrompt } from '@/components/shared/sw-update-prompt'
 
 export default function AppLayout({
   children,
@@ -17,6 +18,7 @@ export default function AppLayout({
       <MobileNav />
       <OfflineIndicator />
       <PWAInstallPrompt />
+      <SWUpdatePrompt />
     </div>
   )
 }

@@ -51,6 +51,7 @@ export function useCachedFetch<T = unknown>(
   const [isFromCache, setIsFromCache] = useState(false)
   const { isOnline } = useNetworkStatus()
   const abortRef = useRef<AbortController | null>(null)
+  const hasDataRef = useRef(false)
 
   // Stable cache key derived from URL
   const resolvedCacheKey = cacheKey || url || ''
@@ -73,6 +74,7 @@ export function useCachedFetch<T = unknown>(
             const cached = await getCachedData(cacheTable, cacheId)
             if (cached && cached.payload !== undefined) {
               setData(cached.payload as T)
+              hasDataRef.current = true
               setIsFromCache(true)
               setIsLoading(false)
               // If online, continue to revalidate in background
@@ -86,9 +88,8 @@ export function useCachedFetch<T = unknown>(
 
         // Step 2: If online, fetch from network
         if (!navigator.onLine) {
-          // Already set cached data above if available
           setIsLoading(false)
-          if (!data) {
+          if (!hasDataRef.current) {
             setError('You are offline and no cached data is available')
           }
           return
@@ -99,7 +100,7 @@ export function useCachedFetch<T = unknown>(
         const controller = new AbortController()
         abortRef.current = controller
 
-        if (!data && !isRefresh) {
+        if (!hasDataRef.current && !isRefresh) {
           setIsLoading(true)
         }
 
@@ -111,6 +112,7 @@ export function useCachedFetch<T = unknown>(
 
         const freshData = await response.json()
         setData(freshData as T)
+        hasDataRef.current = true
         setIsFromCache(false)
         setError(null)
         setIsLoading(false)

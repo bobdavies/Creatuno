@@ -310,6 +310,44 @@ export async function clearExpiredCache(): Promise<void> {
 }
 
 // ==========================================
+// Offline Mutation Helpers
+// ==========================================
+
+export async function queueOfflineMutation(
+  table: string,
+  action: 'create' | 'update' | 'delete',
+  data: Record<string, unknown>
+): Promise<string> {
+  const id = generateLocalId()
+  await addToSyncQueue({
+    id,
+    table,
+    action,
+    data,
+    timestamp: Date.now(),
+    status: 'pending',
+    retryCount: 0,
+  })
+  return id
+}
+
+export async function queueOfflinePost(postData: Record<string, unknown>): Promise<string> {
+  return queueOfflineMutation('posts', 'create', postData)
+}
+
+export async function queueOfflineMessage(messageData: Record<string, unknown>): Promise<string> {
+  return queueOfflineMutation('messages', 'create', messageData)
+}
+
+export async function queueOfflineApplication(applicationData: Record<string, unknown>): Promise<string> {
+  return queueOfflineMutation('applications', 'create', applicationData)
+}
+
+export async function queueOfflineMentorshipRequest(requestData: Record<string, unknown>): Promise<string> {
+  return queueOfflineMutation('mentorship_requests', 'create', requestData)
+}
+
+// ==========================================
 // Utility Functions
 // ==========================================
 
@@ -377,6 +415,13 @@ export const offlineDB = {
   updateSyncQueueItem,
   removeSyncQueueItem,
   clearCompletedSyncItems,
+
+  // Offline Mutations
+  queueOfflineMutation,
+  queueOfflinePost,
+  queueOfflineMessage,
+  queueOfflineApplication,
+  queueOfflineMentorshipRequest,
 
   // User Preferences
   saveUserPreferences,

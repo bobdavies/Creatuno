@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { publicCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       location: p.location || '',
     })) || []
 
-    return NextResponse.json({ creatives })
+    return publicCachedJson({ creatives }, 60, 300)
   } catch (error) {
     console.error('Error in creatives GET:', error)
     return NextResponse.json({ creatives: [] })

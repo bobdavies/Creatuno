@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
+import { publicCachedJson } from '@/lib/api/cache-headers'
 import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // Public endpoint — no auth required. Returns aggregate platform stats.
@@ -45,12 +46,12 @@ export async function GET() {
         .eq('status', 'accepted'),
     ])
 
-    return NextResponse.json({
+    return publicCachedJson({
       creatives: profilesResult.count ?? 0,
       portfolios: portfoliosResult.count ?? 0,
       opportunities: opportunitiesResult.count ?? 0,
       connections: connectionsResult.count ?? 0,
-    })
+    }, 300, 600)
   } catch (error) {
     console.error('Stats API error:', error)
     return NextResponse.json({

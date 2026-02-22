@@ -182,30 +182,62 @@ export async function compressImage(
   }
 }
 
+function getAutoCompressSetting(): boolean {
+  try {
+    const stored = localStorage.getItem('creatuno_settings')
+    if (!stored) return true
+    const settings = JSON.parse(stored)
+    return settings.autoCompressImages !== false
+  } catch {
+    return true
+  }
+}
+
 // Process and save image for offline use
 export async function processAndSaveImage(
   file: File,
   options?: CompressionOptions
 ): Promise<OfflineImage> {
-  const result = await compressImage(file, options)
-  
+  const shouldCompress = getAutoCompressSetting()
+
+  if (shouldCompress) {
+    const result = await compressImage(file, options)
+    const offlineImage: OfflineImage = {
+      id: '',
+      localId: generateLocalId(),
+      originalFile: result.originalFile,
+      compressedFile: result.compressedFile,
+      thumbnailFile: result.thumbnailFile,
+      mimeType: options?.format === 'jpeg' ? 'image/jpeg' : 'image/webp',
+      originalSize: result.originalSize,
+      compressedSize: result.compressedSize,
+      width: result.width,
+      height: result.height,
+      uploadStatus: 'pending',
+      createdAt: Date.now(),
+    }
+    await saveImageOffline(offlineImage)
+    return offlineImage
+  }
+
+  // Skip compression — save original with a small thumbnail
+  const img = await loadImage(file)
+  const thumbnailFile = await createThumbnail(img, THUMBNAIL_SIZE, 'webp')
   const offlineImage: OfflineImage = {
-    id: '', // Will be set after upload
+    id: '',
     localId: generateLocalId(),
-    originalFile: result.originalFile,
-    compressedFile: result.compressedFile,
-    thumbnailFile: result.thumbnailFile,
-    mimeType: options?.format === 'jpeg' ? 'image/jpeg' : 'image/webp',
-    originalSize: result.originalSize,
-    compressedSize: result.compressedSize,
-    width: result.width,
-    height: result.height,
+    originalFile: file,
+    compressedFile: file,
+    thumbnailFile,
+    mimeType: file.type as 'image/webp' | 'image/jpeg',
+    originalSize: file.size,
+    compressedSize: file.size,
+    width: img.width,
+    height: img.height,
     uploadStatus: 'pending',
     createdAt: Date.now(),
   }
-
   await saveImageOffline(offlineImage)
-
   return offlineImage
 }
 

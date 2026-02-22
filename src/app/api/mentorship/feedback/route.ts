@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch feedback/reviews for a mentor
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ feedback: [], averageRating: 0, totalReviews: 0 })
+    return privateCachedJson({ feedback: [], averageRating: 0, totalReviews: 0 })
   }
 
   try {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching feedback:', error)
-      return NextResponse.json({ feedback: [], averageRating: 0, totalReviews: 0 })
+      return privateCachedJson({ feedback: [], averageRating: 0, totalReviews: 0 })
     }
 
     const reviews = feedback || []
@@ -42,14 +43,14 @@ export async function GET(request: NextRequest) {
       ? reviews.reduce((sum, f) => sum + (f.rating || 0), 0) / totalReviews
       : 0
 
-    return NextResponse.json({
+    return privateCachedJson({
       feedback: reviews,
       averageRating: Math.round(averageRating * 10) / 10,
       totalReviews,
     })
   } catch (error) {
     console.error('Error in feedback GET:', error)
-    return NextResponse.json({ feedback: [], averageRating: 0, totalReviews: 0 })
+    return privateCachedJson({ feedback: [], averageRating: 0, totalReviews: 0 })
   }
 }
 

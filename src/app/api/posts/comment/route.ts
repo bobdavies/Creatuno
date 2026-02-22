@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
 // GET - Get comments for a post
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ comments: [] })
+    return privateCachedJson({ comments: [] })
   }
 
   try {
@@ -102,12 +103,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching comments:', error)
-      return NextResponse.json({ comments: [] })
+      return privateCachedJson({ comments: [] })
     }
 
-    return NextResponse.json({ comments: comments || [] })
+    return privateCachedJson({ comments: comments || [] })
   } catch (error) {
     console.error('Error in comments GET:', error)
-    return NextResponse.json({ comments: [] })
+    return privateCachedJson({ comments: [] })
   }
 }

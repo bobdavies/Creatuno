@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
+import { publicCachedJson } from '@/lib/api/cache-headers'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // Get all public portfolios for discovery
@@ -86,7 +87,7 @@ export async function GET() {
       }
     }) || []
 
-    return NextResponse.json({ portfolios: transformedPortfolios })
+    return publicCachedJson({ portfolios: transformedPortfolios }, 60, 300)
   } catch (error) {
     console.error('Public portfolios API error:', error)
     return NextResponse.json(

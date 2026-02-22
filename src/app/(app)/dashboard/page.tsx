@@ -16,6 +16,7 @@ import { offlineDB } from '@/lib/offline/indexed-db'
 import { getOfflineImageUrl } from '@/lib/offline/image-compressor'
 import { formatDistanceToNow } from '@/lib/format-date'
 import { useSession } from '@/components/providers/user-session-provider'
+import { useCachedFetch } from '@/hooks/use-cached-fetch'
 import type { OfflinePortfolio } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -114,17 +115,29 @@ export default function DashboardPage() {
   const { user } = useUser()
   const { userId } = useSession()
 
-  // Data
-  const [stats, setStats] = useState<UserStats>({ portfolioViews: 0, activeApplications: 0, totalEarnings: 0 })
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  // Cached data fetching
+  const { data: statsData, isLoading: isLoadingStats } = useCachedFetch<UserStats>(
+    '/api/stats/user', { ttlMs: 5 * 60 * 1000 }
+  )
+  const stats = statsData ?? { portfolioViews: 0, activeApplications: 0, totalEarnings: 0 }
+
+  const { data: oppsData, isLoading: isLoadingOpps } = useCachedFetch<{ opportunities: Opportunity[] }>(
+    '/api/opportunities', { ttlMs: 3 * 60 * 1000 }
+  )
+  const opportunities = (oppsData?.opportunities ?? []).slice(0, 5)
+
+  const { data: notifsData, isLoading: isLoadingNotifs } = useCachedFetch<{ notifications: Notification[] }>(
+    '/api/notifications', { ttlMs: 2 * 60 * 1000 }
+  )
+  const notifications = (notifsData?.notifications ?? []).slice(0, 5)
+
+  const { data: mentorshipData, isLoading: isLoadingMentorship } = useCachedFetch<{ requests: MentorshipRequest[] }>(
+    '/api/mentorship', { ttlMs: 5 * 60 * 1000 }
+  )
+  const mentorship = (mentorshipData?.requests ?? []).find(r => r.status === 'accepted') ?? null
+
   const [portfolios, setPortfolios] = useState<DisplayPortfolio[]>([])
   const [isLoadingPortfolios, setIsLoadingPortfolios] = useState(true)
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
-  const [isLoadingOpps, setIsLoadingOpps] = useState(true)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoadingNotifs, setIsLoadingNotifs] = useState(true)
-  const [mentorship, setMentorship] = useState<MentorshipRequest | null>(null)
-  const [isLoadingMentorship, setIsLoadingMentorship] = useState(true)
 
   // Stats refs for count-up
   const statsRef = useRef(null)
@@ -133,41 +146,6 @@ export default function DashboardPage() {
   const viewsCount = useCountUp(stats.portfolioViews, 1500, statsInView && !isLoadingStats)
   const appsCount = useCountUp(stats.activeApplications, 1200, statsInView && !isLoadingStats)
   const earningsCount = useCountUp(stats.totalEarnings, 1800, statsInView && !isLoadingStats)
-
-  // ─── Data Fetching ────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    // Stats
-    fetch('/api/stats/user')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStats(d) })
-      .catch(() => {})
-      .finally(() => setIsLoadingStats(false))
-
-    // Opportunities
-    fetch('/api/opportunities')
-      .then(r => r.ok ? r.json() : { opportunities: [] })
-      .then(d => setOpportunities((d.opportunities || []).slice(0, 5)))
-      .catch(() => {})
-      .finally(() => setIsLoadingOpps(false))
-
-    // Notifications
-    fetch('/api/notifications')
-      .then(r => r.ok ? r.json() : { notifications: [] })
-      .then(d => setNotifications((d.notifications || []).slice(0, 5)))
-      .catch(() => {})
-      .finally(() => setIsLoadingNotifs(false))
-
-    // Mentorship
-    fetch('/api/mentorship')
-      .then(r => r.ok ? r.json() : { requests: [] })
-      .then(d => {
-        const active = (d.requests || []).find((r: MentorshipRequest) => r.status === 'accepted')
-        setMentorship(active || null)
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingMentorship(false))
-  }, [])
 
   // Portfolios (offline-first merge)
   useEffect(() => {

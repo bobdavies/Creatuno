@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch user's mentorship requests
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ requests: [] })
+    return privateCachedJson({ requests: [] })
   }
 
   const { userId } = await auth()
@@ -66,13 +67,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching mentorship requests:', error)
-      return NextResponse.json({ requests: [] })
+      return privateCachedJson({ requests: [] })
     }
 
-    return NextResponse.json({ requests: requests || [] })
+    return privateCachedJson({ requests: requests || [] })
   } catch (error) {
     console.error('Error in mentorship GET:', error)
-    return NextResponse.json({ requests: [] })
+    return privateCachedJson({ requests: [] })
   }
 }
 

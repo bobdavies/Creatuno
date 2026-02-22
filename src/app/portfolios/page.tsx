@@ -2,7 +2,7 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Cancel01Icon, FolderOpenIcon, Loading02Icon, Search01Icon, SlidersHorizontalIcon, StarIcon, ViewIcon } from "@hugeicons/core-free-icons";
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import { LandingHeader } from '@/components/landing/landing-header'
 import { LandingAuthProvider } from '@/components/landing/landing-auth-context'
 import TiltedCard from '@/components/TiltedCard'
 import { cn } from '@/lib/utils'
+import { useCachedFetch } from '@/hooks/use-cached-fetch'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,28 +62,14 @@ const CATEGORIES = [
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function PortfolioDiscoveryPage() {
-  const [portfolios, setPortfolios] = useState<PublicPortfolio[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: portfolioData, isLoading } = useCachedFetch<{ portfolios: PublicPortfolio[] }>(
+    '/api/portfolios/public',
+    { ttlMs: 5 * 60 * 1000 }
+  )
+  const portfolios = portfolioData?.portfolios ?? []
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
-
-  useEffect(() => {
-    async function loadPortfolios() {
-      try {
-        const response = await fetch('/api/portfolios/public')
-        if (response.ok) {
-          const data = await response.json()
-          setPortfolios(data.portfolios || [])
-        }
-      } catch (error) {
-        console.error('Error loading portfolios:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadPortfolios()
-  }, [])
 
   // Filter and sort
   const filteredPortfolios = (() => {

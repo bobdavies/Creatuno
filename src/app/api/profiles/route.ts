@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient } from '@/lib/supabase/server'
 
@@ -132,7 +133,7 @@ export async function GET() {
       throw error
     }
 
-    return NextResponse.json({ profile: data })
+    return privateCachedJson({ profile: data })
   } catch (error) {
     console.error('Profile GET error:', error)
     return NextResponse.json(

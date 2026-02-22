@@ -1,6 +1,6 @@
 'use client'
 
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { isSupabaseConfigured, getSupabaseClient } from '@/lib/supabase/client'
 import {
   getSyncQueueItems,
   updateSyncQueueItem,
@@ -42,72 +42,42 @@ function updateSyncStatus(status: Partial<SyncStatus>): void {
 // Maximum retry attempts
 const MAX_RETRIES = 3
 
-// Sync a single queue item
+// Sync a single queue item via the unified /api/sync endpoint
 async function syncQueueItem(item: SyncQueueItem): Promise<boolean> {
-  if (!isSupabaseConfigured()) {
-    // Skip sync silently when Supabase isn't configured
-    return false
-  }
-
-  const supabase = getSupabaseClient()
-
   try {
-    // Update item status to syncing
     await updateSyncQueueItem({ ...item, status: 'syncing' })
 
-    // Note: Using 'any' casts for dynamic table operations as Supabase types are strict
-    switch (item.action) {
-      case 'create': {
-        const { error } = await (supabase.from(item.table) as any).insert(item.data)
-        if (error) throw error
-        break
-      }
-      
-      case 'update': {
-        const updateData = item.data as Record<string, unknown>
-        const { error } = await (supabase.from(item.table) as any)
-          .update(updateData)
-          .eq('id', updateData.id)
-        if (error) throw error
-        break
-      }
-      
-      case 'delete': {
-        const deleteData = item.data as Record<string, unknown>
-        const { error } = await (supabase.from(item.table) as any)
-          .delete()
-          .eq('id', deleteData.id)
-        if (error) throw error
-        break
-      }
+    const response = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: item.action,
+        table: item.table,
+        data: item.data,
+        id: (item.data as Record<string, unknown>).id,
+        timestamp: item.timestamp,
+      }),
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+      throw new Error(result.error || `Sync failed: ${response.status}`)
     }
 
-    // Remove from queue on success
     await removeSyncQueueItem(item.id)
     return true
-
   } catch (error) {
     console.error(`Sync failed for item ${item.id}:`, error)
-    
-    // Increment retry count
+
     const newRetryCount = item.retryCount + 1
-    
+
     if (newRetryCount >= MAX_RETRIES) {
-      // Mark as failed after max retries
-      await updateSyncQueueItem({ 
-        ...item, 
-        status: 'failed', 
-        retryCount: newRetryCount 
-      })
+      await updateSyncQueueItem({ ...item, status: 'failed', retryCount: newRetryCount })
     } else {
-      // Reset to pending for retry
-      await updateSyncQueueItem({ 
-        ...item, 
-        status: 'pending', 
-        retryCount: newRetryCount 
-      })
+      await updateSyncQueueItem({ ...item, status: 'pending', retryCount: newRetryCount })
     }
-    
+
     return false
   }
 }
@@ -266,7 +236,7 @@ async function syncPendingProjects(): Promise<void> {
       const data = project.data as Record<string, unknown>
       
       // Get image URLs from the project images
-      const imageUrls = project.images
+      const imageUrls = (project.images ?? [])
         .filter(img => img.remoteUrl)
         .map(img => img.remoteUrl as string)
 
@@ -371,6 +341,11 @@ export async function performSync(): Promise<void> {
     return
   }
 
+  if (shouldSkipSyncForConnection()) {
+    console.log('Slow connection and syncOnWifiOnly enabled - skipping sync')
+    return
+  }
+
   try {
     updateSyncStatus({ isSyncing: true })
 
@@ -418,18 +393,32 @@ export async function performSync(): Promise<void> {
 }
 
 // Register for background sync (if supported)
-export async function registerBackgroundSync(): Promise<void> {
+export async function registerBackgroundSync(tag: string = 'creatuno-sync'): Promise<void> {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.ready
-      // Check if Background Sync is supported
       if ('sync' in registration) {
-        await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('creatuno-sync')
-        console.log('Background sync registered')
+        await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag)
       }
     } catch (error) {
       console.error('Background sync registration failed:', error)
     }
+  }
+}
+
+// Check if user prefers wifi-only sync
+function shouldSkipSyncForConnection(): boolean {
+  if (typeof navigator === 'undefined') return false
+  try {
+    const stored = localStorage.getItem('creatuno_settings')
+    if (!stored) return false
+    const settings = JSON.parse(stored)
+    if (!settings.syncOnWifiOnly) return false
+    const nav = navigator as Navigator & { connection?: { effectiveType?: string } }
+    const etype = nav.connection?.effectiveType
+    return etype === 'slow-2g' || etype === '2g'
+  } catch {
+    return false
   }
 }
 
@@ -470,6 +459,7 @@ export async function syncPortfolioImmediately(localId: string): Promise<{ succe
         ...supabasePortfolio,
         localId: portfolio.localId,
       }),
+      credentials: 'include',
     })
 
     const result = await response.json()
@@ -532,7 +522,7 @@ export async function syncProjectImmediately(localId: string): Promise<{ success
     await saveProjectOffline({ ...project, syncStatus: 'syncing' })
 
     const data = project.data as Record<string, unknown>
-    const imageUrls = project.images
+    const imageUrls = (project.images ?? [])
       .filter(img => img.remoteUrl)
       .map(img => img.remoteUrl as string)
 
@@ -553,6 +543,7 @@ export async function syncProjectImmediately(localId: string): Promise<{ success
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(supabaseProject),
+      credentials: 'include',
     })
 
     const result = await response.json()

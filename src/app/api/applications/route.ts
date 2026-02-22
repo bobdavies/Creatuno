@@ -1,13 +1,14 @@
 // @ts-nocheck — Supabase types not generated for this table
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch user's applications or check for existing application
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ applications: [] })
+    return privateCachedJson({ applications: [] })
   }
 
   const { userId } = await auth()
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
         .eq('user_id', userId)
 
       if (oppError || !myOpportunities || myOpportunities.length === 0) {
-        return NextResponse.json({ applications: [] })
+        return privateCachedJson({ applications: [] })
       }
 
       const oppIds = myOpportunities.map((o: { id: string }) => o.id)
@@ -63,10 +64,10 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error('Error fetching employer applications:', error)
-        return NextResponse.json({ applications: [] })
+        return privateCachedJson({ applications: [] })
       }
 
-      return NextResponse.json({ applications: applications || [] })
+      return privateCachedJson({ applications: applications || [] })
     }
 
     // Default: fetch applications by the current user (creative/applicant view)
@@ -101,13 +102,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching applications:', error)
-      return NextResponse.json({ applications: [] })
+      return privateCachedJson({ applications: [] })
     }
 
-    return NextResponse.json({ applications: applications || [] })
+    return privateCachedJson({ applications: applications || [] })
   } catch (error) {
     console.error('Error in applications GET:', error)
-    return NextResponse.json({ applications: [] })
+    return privateCachedJson({ applications: [] })
   }
 }
 

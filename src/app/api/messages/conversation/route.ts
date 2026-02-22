@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch all messages between two users (conversation view)
 export async function GET(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ messages: [], partner: null })
+    return privateCachedJson({ messages: [], partner: null })
   }
 
   const { userId } = await auth()
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching conversation:', error)
-      return NextResponse.json({ messages: [], partner: null })
+      return privateCachedJson({ messages: [], partner: null })
     }
 
     // Fetch partner profile info
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       .eq('receiver_id', userId)
       .eq('is_read', false)
 
-    return NextResponse.json({
+    return privateCachedJson({
       messages: messages || [],
       partner: partnerProfile
         ? {
@@ -68,6 +69,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error in conversation GET:', error)
-    return NextResponse.json({ messages: [], partner: null })
+    return privateCachedJson({ messages: [], partner: null })
   }
 }

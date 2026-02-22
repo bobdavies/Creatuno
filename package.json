@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "build:log": "node scripts/build-with-log.js",
     "build:log:timestamped": "node scripts/build-with-log.js --timestamped",
     "start": "next start",

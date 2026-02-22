@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch stats specific to the current authenticated user
 export async function GET() {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({
+    return privateCachedJson({
       portfolioViews: 0,
       activeApplications: 0,
       totalEarnings: 0,
@@ -59,14 +60,14 @@ export async function GET() {
       0
     ) ?? 0
 
-    return NextResponse.json({
+    return privateCachedJson({
       portfolioViews,
       activeApplications,
       totalEarnings,
     })
   } catch (error) {
     console.error('User stats API error:', error)
-    return NextResponse.json({
+    return privateCachedJson({
       portfolioViews: 0,
       activeApplications: 0,
       totalEarnings: 0,

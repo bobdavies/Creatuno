@@ -9,8 +9,10 @@ import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { getRoleBasedDashboard } from '@/lib/auth/user-session'
 import { useLandingAuth } from './landing-auth-context'
+import dynamic from 'next/dynamic'
 import BlurText from '@/components/BlurText'
-import Cubes from '@/components/Cubes'
+
+const Cubes = dynamic(() => import('@/components/Cubes'), { ssr: false })
 
 /*
  * CTA section redesigned to match the editorial / warm-brown

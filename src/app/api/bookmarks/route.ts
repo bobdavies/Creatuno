@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
+import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // GET - Fetch user's bookmarked portfolios
 export async function GET() {
   if (!isSupabaseConfiguredServer()) {
-    return NextResponse.json({ bookmarks: [] })
+    return privateCachedJson({ bookmarks: [] })
   }
 
   const { userId } = await auth()
@@ -45,13 +46,13 @@ export async function GET() {
 
     if (error) {
       console.error('Error fetching bookmarks:', error)
-      return NextResponse.json({ bookmarks: [] })
+      return privateCachedJson({ bookmarks: [] })
     }
 
-    return NextResponse.json({ bookmarks: bookmarks || [] })
+    return privateCachedJson({ bookmarks: bookmarks || [] })
   } catch (error) {
     console.error('Error in bookmarks GET:', error)
-    return NextResponse.json({ bookmarks: [] })
+    return privateCachedJson({ bookmarks: [] })
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft01Icon, Calendar01Icon, Edit01Icon, LinkSquare01Icon, Loading02Icon, UserIcon, Video01Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -11,7 +12,10 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getPortfolioOffline, getProjectsByPortfolio } from '@/lib/offline'
 import { getOfflineImageUrl } from '@/lib/offline/image-compressor'
-import { ImageGallery } from '@/components/portfolio/image-gallery'
+const ImageGallery = dynamic(
+  () => import('@/components/portfolio/image-gallery').then(mod => mod.ImageGallery),
+  { ssr: false }
+)
 import type { OfflinePortfolio, OfflineProject } from '@/types'
 
 export default function PortfolioPreviewPage() {
