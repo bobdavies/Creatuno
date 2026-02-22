@@ -3,6 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, ArrowRight01Icon, Award01Icon, Cancel01Icon, CheckmarkCircle01Icon, Clock01Icon, FolderOpenIcon, GitCompareIcon, Loading02Icon, Location01Icon, Message01Icon, Refresh01Icon, Search01Icon, SentIcon, SlidersHorizontalIcon, SparklesIcon, StarIcon, UserCheck01Icon, UserGroupIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { useCachedFetch } from '@/hooks/use-cached-fetch'
@@ -118,6 +119,7 @@ export default function MentorshipPage() {
 
 function FindMentorView() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -141,6 +143,34 @@ function FindMentorView() {
   // My mentorship state
   const [myRequests, setMyRequests] = useState<MentorshipRequest[]>([])
   const [isLoadingRequests, setIsLoadingRequests] = useState(false)
+
+  // ── Auto-open request from URL params (e.g. from portfolio contact button) ──
+
+  useEffect(() => {
+    const requestMentorId = searchParams.get('request')
+    const requestMentorName = searchParams.get('name')
+    if (requestMentorId && mentors.length > 0) {
+      const mentor = mentors.find(m => m.user_id === requestMentorId)
+      if (mentor) {
+        setSelectedMentor(mentor)
+        setIsRequestOpen(true)
+      } else if (requestMentorName) {
+        setSelectedMentor({
+          id: requestMentorId,
+          user_id: requestMentorId,
+          fullName: decodeURIComponent(requestMentorName),
+          avatarUrl: null,
+          bio: '',
+          location: '',
+          skills: [],
+          mentorExpertise: [],
+          maxMentees: 5,
+          isAvailableForMentorship: true,
+        } as Mentor)
+        setIsRequestOpen(true)
+      }
+    }
+  }, [searchParams, mentors])
 
   // ── Data Loading ───────────────────────────────────────────────────────────
 

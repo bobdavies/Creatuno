@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AnalyticsUpIcon, ArrowLeft01Icon, Briefcase01Icon, Building02Icon, Calendar01Icon, CheckmarkCircle01Icon, GlobeIcon, Loading02Icon, Location01Icon, SparklesIcon, Tag01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { MdAttachMoney, MdBolt } from 'react-icons/md'
 import { motion } from 'motion/react'
@@ -84,8 +84,12 @@ const ease = [0.23, 1, 0.32, 1] as const
 
 export default function CreateOpportunityPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { role } = useSession()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const forCreatorId = searchParams.get('for')
+  const forCreatorName = searchParams.get('name') ? decodeURIComponent(searchParams.get('name')!) : null
 
   const [formData, setFormData] = useState({
     title: '',
@@ -148,6 +152,19 @@ export default function CreateOpportunityPage() {
 
       if (response.ok) {
         const data = await response.json()
+        if (forCreatorId) {
+          fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipient_id: forCreatorId,
+              type: 'opportunity_invite',
+              title: 'You\'ve been invited to an opportunity!',
+              message: `Check out "${formData.title.trim()}" — an opportunity created with you in mind.`,
+              link: `/opportunities/${data.opportunity.id}`,
+            }),
+          }).catch(() => {})
+        }
         toast.success('Opportunity posted successfully!')
         router.push(`/opportunities/${data.opportunity.id}`)
       } else {
@@ -217,6 +234,25 @@ export default function CreateOpportunityPage() {
 
       {/* ━━━ FORM ━━━ */}
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4 sm:px-6">
+
+        {forCreatorName && (
+          <motion.div
+            className="mt-4 p-4 rounded-2xl bg-brand-500/10 border border-brand-500/20"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center">
+                <HugeiconsIcon icon={Briefcase01Icon} className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Creating opportunity for {forCreatorName}</p>
+                <p className="text-xs text-muted-foreground">They&apos;ll be notified and invited to apply once published</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Type Selector ── */}
         <motion.div

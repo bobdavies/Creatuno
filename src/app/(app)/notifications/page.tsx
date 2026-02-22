@@ -1,7 +1,7 @@
 'use client'
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowDown01Icon, ArrowRight01Icon, Briefcase01Icon, CheckmarkCircle01Icon, Delete02Icon, FileAttachmentIcon, Loading02Icon, Mail01Icon, MailReply01Icon, Message01Icon, Notification01Icon, PackageIcon, Refresh01Icon, RotateLeft01Icon, StarIcon, Tick01Icon, TickDouble01Icon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, ArrowRight01Icon, Briefcase01Icon, CheckmarkCircle01Icon, Delete02Icon, FileAttachmentIcon, Loading02Icon, Mail01Icon, MailReply01Icon, Message01Icon, Notification01Icon, PackageIcon, Refresh01Icon, RotateLeft01Icon, SparklesIcon, StarIcon, Tick01Icon, TickDouble01Icon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons";
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -38,6 +38,7 @@ const CATEGORY_TABS = [
   { key: 'village', label: 'Village Square', types: ['post_like', 'like', 'post_comment', 'comment'] },
   { key: 'applications', label: 'Applications', types: ['new_application', 'application', 'application_status'] },
   { key: 'work', label: 'Work', types: ['work_submitted', 'work_approved', 'revision_requested'] },
+  { key: 'pitches', label: 'Pitch Stage', types: ['pitch_interest_received', 'pitch_published', 'pitch_funded', 'opportunity_invite'] },
 ] as const
 
 const URGENT_TYPES = new Set(['mentorship_request', 'mentorship_offer', 'application_status', 'revision_requested'])
@@ -72,6 +73,12 @@ function getIconConfig(type: string): { icon: React.ElementType; gradient: strin
       return { icon: RotateLeft01Icon, gradient: 'from-brand-500/20 to-brand-purple-500/10', iconColor: 'text-brand-600 dark:text-brand-400' }
     case 'new_message':
       return { icon: Mail01Icon, gradient: 'from-brand-purple-500/20 to-brand-purple-500/10', iconColor: 'text-brand-purple-600 dark:text-brand-400' }
+    case 'pitch_interest_received':
+    case 'pitch_published':
+    case 'pitch_funded':
+      return { icon: SparklesIcon, gradient: 'from-brand-500/20 to-brand-purple-500/10', iconColor: 'text-brand-600 dark:text-brand-400' }
+    case 'opportunity_invite':
+      return { icon: Briefcase01Icon, gradient: 'from-brand-500/20 to-brand-purple-500/10', iconColor: 'text-brand-600 dark:text-brand-400' }
     default:
       return { icon: Notification01Icon, gradient: 'from-muted/50 to-muted/30', iconColor: 'text-muted-foreground' }
   }
@@ -116,6 +123,16 @@ function getActionConfig(type: string, data?: Record<string, unknown>): { label:
       return { label: 'VIEW WORK', href: '/dashboard/applications', icon: FileAttachmentIcon }
     case 'portfolio_view':
       return { label: 'VIEW PORTFOLIOS', href: '/dashboard/portfolios', icon: ViewIcon }
+    case 'pitch_interest_received':
+    case 'pitch_published':
+    case 'pitch_funded': {
+      const pitchId = data?.pitch_id as string | undefined
+      return { label: 'VIEW PITCH', href: pitchId ? `/pitch-stage/${pitchId}` : '/pitch-stage', icon: SparklesIcon }
+    }
+    case 'opportunity_invite': {
+      const link = data?.link as string | undefined
+      return { label: 'VIEW OPPORTUNITY', href: link || '/opportunities', icon: ViewIcon }
+    }
     default:
       return null
   }

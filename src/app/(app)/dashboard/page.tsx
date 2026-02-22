@@ -352,6 +352,7 @@ export default function DashboardPage() {
           {[
             { label: 'New Portfolio', href: '/dashboard/portfolios/new', icon: Add01Icon },
             { label: 'Find Work', href: '/opportunities', icon: Briefcase01Icon, count: opportunities.length > 0 ? opportunities.length : undefined },
+            { label: 'Pitch Stage', href: '/pitch-stage', icon: SparklesIcon },
             { label: 'Find Mentor', href: '/mentorship', icon: UserGroupIcon },
             { label: 'Village Square', href: '/feed', icon: AnalyticsUpIcon },
           ].map((action) => (

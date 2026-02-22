@@ -445,6 +445,7 @@ export default function MentorDashboardPage() {
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
             {[
               { label: 'Scout Talents', href: '/mentorship/scout', badge: sentOffersCount > 0 ? `${sentOffersCount} sent` : undefined },
+              { label: 'Champion on Pitch Stage', href: '/pitch-stage/create', badge: undefined },
               { label: 'Messages', href: '/messages', badge: undefined },
               { label: 'Notifications', href: '/notifications', badge: unreadNotifs > 0 ? `${unreadNotifs}` : undefined },
               { label: 'My Profile', href: '/profile', badge: undefined },
@@ -999,6 +1000,14 @@ function ActiveMenteeCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Link
+                href={`/pitch-stage/create?mentee=${mentorship.mentee_id}`}
+                className="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 hover:border-brand-500/40 hover:bg-brand-500/15 transition-all"
+              >
+                Pitch
+              </Link>
+            </motion.div>
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href={`/messages/chat/${mentorship.mentee_id}`}

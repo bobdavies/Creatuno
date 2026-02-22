@@ -46,11 +46,14 @@ async function getPortfolio(username: string, slug: string) {
         *,
         profiles:user_id (
           id,
+          user_id,
           full_name,
           avatar_url,
           bio,
           location,
-          skills
+          skills,
+          is_mentor,
+          role
         )
       `)
       .eq('slug', slug)
@@ -87,12 +90,15 @@ async function getPortfolio(username: string, slug: string) {
       createdAt: portfolio.created_at,
       user: {
         id: portfolio.profiles?.id || portfolio.user_id,
+        userId: portfolio.profiles?.user_id || portfolio.user_id,
         fullName: portfolio.profiles?.full_name || 'Unknown User',
         username: username,
         avatarUrl: portfolio.profiles?.avatar_url || null,
         bio: portfolio.profiles?.bio || '',
         location: portfolio.profiles?.location || '',
         skills: portfolio.profiles?.skills || [],
+        isMentor: portfolio.profiles?.is_mentor || false,
+        role: portfolio.profiles?.role || 'creative',
       },
       projects: (projects || []).map((p: any) => ({
         id: p.id,
@@ -264,7 +270,9 @@ export default async function PublicPortfolioPage({ params }: PortfolioPageProps
             <ContactCreatorButton
               creatorName={portfolio.user.fullName}
               creatorUsername={portfolio.user.username}
+              creatorId={portfolio.user.userId}
               portfolioPath={portfolioPath}
+              creatorIsMentor={portfolio.user.isMentor}
             />
           </FadeIn>
         </div>

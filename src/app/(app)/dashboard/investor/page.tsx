@@ -1,7 +1,7 @@
 'use client'
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AnalyticsUpIcon, ArrowRight01Icon, Bookmark01Icon, BookmarkCheck01Icon, Briefcase01Icon, Loading02Icon, Message01Icon, Refresh01Icon, Search01Icon, Settings01Icon, StarIcon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { AnalyticsUpIcon, ArrowRight01Icon, Bookmark01Icon, BookmarkCheck01Icon, Briefcase01Icon, CheckmarkCircle01Icon, Loading02Icon, Message01Icon, Refresh01Icon, Search01Icon, Settings01Icon, SparklesIcon, StarIcon, UserGroupIcon, ViewIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { MdAttachMoney } from 'react-icons/md'
@@ -56,6 +56,9 @@ export default function InvestorDashboardPage() {
   const [investmentOpps, setInvestmentOpps] = useState<Opportunity[]>([])
   const [messageCount, setMessageCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
+  const [livePitches, setLivePitches] = useState<any[]>([])
+  const [myInterests, setMyInterests] = useState<any[]>([])
+  const [pitchCount, setPitchCount] = useState(0)
 
   useEffect(() => {
     if (userId && role === 'investor') {
@@ -66,15 +69,18 @@ export default function InvestorDashboardPage() {
   const loadInvestorData = async () => {
     setIsLoading(true)
     try {
-      const [bookmarksRes, oppsRes, messagesRes] = await Promise.all([
+      const [bookmarksRes, oppsRes, messagesRes, pitchesRes] = await Promise.all([
         fetch('/api/bookmarks').then(r => r.ok ? r.json() : { bookmarks: [] }).catch(() => ({ bookmarks: [] })),
         fetch('/api/opportunities?type=investment').then(r => r.ok ? r.json() : { opportunities: [] }).catch(() => ({ opportunities: [] })),
         fetch('/api/messages?count_only=true').then(r => r.ok ? r.json() : { count: 0 }).catch(() => ({ count: 0 })),
+        fetch('/api/pitches?status=live&limit=5').then(r => r.ok ? r.json() : { pitches: [] }).catch(() => ({ pitches: [] })),
       ])
 
       setBookmarks(bookmarksRes.bookmarks || [])
       setInvestmentOpps(oppsRes.opportunities || [])
       setMessageCount(messagesRes.count || 0)
+      setLivePitches(pitchesRes.pitches || [])
+      setPitchCount(pitchesRes.pitches?.length || 0)
     } catch (error) {
       console.error('Error loading investor data:', error)
     } finally {
@@ -188,20 +194,28 @@ export default function InvestorDashboardPage() {
           </div>
         </SpotlightCard>
         <SpotlightCard>
-          <div className="p-4 sm:p-5">
+          <Link href="/pitch-stage" className="block p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <MdAttachMoney className="w-8 h-8 text-brand-purple-600 dark:text-brand-400" />
+              <HugeiconsIcon icon={SparklesIcon} className="w-8 h-8 text-brand-purple-600 dark:text-brand-400" />
               <div>
-                <p className="text-sm font-bold text-muted-foreground">Coming Soon</p>
-                <p className="text-xs text-muted-foreground">Total Invested</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">
+                  {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : pitchCount}
+                </p>
+                <p className="text-xs text-muted-foreground">Pitches Available</p>
               </div>
             </div>
-          </div>
+          </Link>
         </SpotlightCard>
       </div>
 
       {/* Quick Links */}
-      <div className="grid md:grid-cols-3 gap-4 mb-6">
+      <div className="grid md:grid-cols-4 gap-4 mb-6">
+        <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
+          <Link href="/pitch-stage">
+            <HugeiconsIcon icon={SparklesIcon} className="w-6 h-6 text-brand-purple-600 dark:text-brand-400" />
+            <span>Pitch Stage</span>
+          </Link>
+        </Button>
         <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" asChild>
           <Link href="/portfolios">
             <HugeiconsIcon icon={ViewIcon} className="w-6 h-6 text-brand-purple-600 dark:text-brand-400" />
@@ -223,11 +237,20 @@ export default function InvestorDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="saved" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+      <Tabs defaultValue="pitches" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+          <TabsTrigger value="pitches" className="flex items-center gap-2">
+            <HugeiconsIcon icon={SparklesIcon} className="w-4 h-4" />
+            Pitch Stage
+            {pitchCount > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-brand-500 text-brand-dark">
+                {pitchCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="saved" className="flex items-center gap-2">
             <HugeiconsIcon icon={Bookmark01Icon} className="w-4 h-4" />
-            Saved Portfolios
+            Saved
             {bookmarks.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-brand-500 text-brand-dark">
                 {bookmarks.length}
@@ -239,6 +262,76 @@ export default function InvestorDashboardPage() {
             Investments
           </TabsTrigger>
         </TabsList>
+
+        {/* Pitch Stage Tab */}
+        <TabsContent value="pitches">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <HugeiconsIcon icon={Loading02Icon} className="w-8 h-8 animate-spin text-brand-purple-600 dark:text-brand-400" />
+            </div>
+          ) : livePitches.length > 0 ? (
+            <div className="space-y-4">
+              {livePitches.map((pitch: any) => (
+                <SpotlightCard key={pitch.id}>
+                  <Link href={`/pitch-stage/${pitch.id}`} className="block p-4 sm:p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-500/20 via-brand-purple-500/10 to-muted/30 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {pitch.cover_image ? (
+                          <img src={pitch.cover_image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <HugeiconsIcon icon={SparklesIcon} className="w-6 h-6 text-brand-500/40" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-bold text-foreground truncate">{pitch.title}</h3>
+                          {pitch.category && (
+                            <Badge variant="outline" className="text-[9px] flex-shrink-0">{pitch.category}</Badge>
+                          )}
+                        </div>
+                        {pitch.tagline && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{pitch.tagline}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+                          <span>{pitch.creative?.full_name}</span>
+                          {pitch.funding_ask && (
+                            <span className="font-medium text-brand-600 dark:text-brand-400">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: pitch.currency || 'USD', maximumFractionDigits: 0 }).format(pitch.funding_ask)}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-0.5">
+                            <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3 h-3" />
+                            {pitch.interest_count} interested
+                          </span>
+                        </div>
+                      </div>
+                      <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                    </div>
+                  </Link>
+                </SpotlightCard>
+              ))}
+              <div className="text-center pt-2">
+                <Button variant="outline" asChild className="rounded-full">
+                  <Link href="/pitch-stage">
+                    Browse All Pitches
+                    <HugeiconsIcon icon={ArrowRight01Icon} className="w-4 h-4 ml-2" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <SpotlightCard>
+              <div className="p-8 text-center">
+                <HugeiconsIcon icon={SparklesIcon} className="w-10 h-10 text-brand-purple-600/30 dark:text-brand-400/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground mb-1">No live pitches yet</p>
+                <p className="text-xs text-muted-foreground mb-4">Creative talent will appear here when they publish pitches</p>
+                <Button variant="outline" asChild className="rounded-full">
+                  <Link href="/pitch-stage">Visit The Pitch Stage</Link>
+                </Button>
+              </div>
+            </SpotlightCard>
+          )}
+        </TabsContent>
 
         {/* Saved Portfolios Tab */}
         <TabsContent value="saved">

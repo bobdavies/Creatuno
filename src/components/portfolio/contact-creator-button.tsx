@@ -1,57 +1,144 @@
 'use client'
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Briefcase01Icon, Cancel01Icon, Login01Icon, Mail01Icon, Message01Icon, Mortarboard01Icon, SparklesIcon, UserAdd01Icon } from "@hugeicons/core-free-icons";
+import { Bookmark01Icon, BookmarkCheck01Icon, Briefcase01Icon, Cancel01Icon, Login01Icon, Mail01Icon, Message01Icon, Mortarboard01Icon, SparklesIcon, UserAdd01Icon } from "@hugeicons/core-free-icons";
 import { useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
-import SpotlightCard from '@/components/SpotlightCard'
+import { useSession } from '@/components/providers/user-session-provider'
+import { toast } from 'sonner'
 
 interface ContactCreatorButtonProps {
   creatorName: string
   creatorUsername: string
+  creatorId: string
   portfolioPath: string
+  creatorIsMentor?: boolean
+}
+
+interface ContactOption {
+  icon: any
+  label: string
+  description: string
+  href?: string
+  action?: () => void
+  color: string
+  bg: string
 }
 
 const ease = [0.23, 1, 0.32, 1] as const
 
-export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPath }: ContactCreatorButtonProps) {
+export function ContactCreatorButton({
+  creatorName,
+  creatorUsername,
+  creatorId,
+  portfolioPath,
+  creatorIsMentor,
+}: ContactCreatorButtonProps) {
   const { user, isLoaded } = useUser()
-  const router = useRouter()
+  const { role } = useSession()
   const [showDialog, setShowDialog] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [bookmarking, setBookmarking] = useState(false)
 
   const redirectUrl = encodeURIComponent(portfolioPath)
   const isAuth = isLoaded && !!user
+  const firstName = creatorName.split(' ')[0]
+  const encodedName = encodeURIComponent(creatorName)
 
-  const contactOptions = [
-    {
-      icon: Briefcase01Icon,
-      label: 'Offer a Job / Gig',
-      description: 'Hire this creative for your project',
-      href: '/opportunities/create',
-      color: 'from-brand-500 to-brand-purple-500',
-      bg: 'bg-brand-purple-500/10 dark:bg-brand-500/10',
-    },
-    {
-      icon: Message01Icon,
-      label: 'Send a Message',
-      description: 'Start a conversation',
-      href: `/messages`,
-      color: 'from-brand-purple-500 to-brand-purple-500',
-      bg: 'bg-brand-purple-500/10',
-    },
-    {
-      icon: Mortarboard01Icon,
-      label: 'Request Mentorship',
-      description: 'Learn from their experience',
-      href: '/mentorship',
-      color: 'from-brand-purple-500 to-brand-purple-500',
-      bg: 'bg-brand-purple-500/10',
-    },
-  ]
+  const handleBookmark = async () => {
+    if (bookmarking) return
+    setBookmarking(true)
+    try {
+      const res = await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portfolio_id: undefined }),
+      })
+      if (res.ok) {
+        setBookmarked(true)
+        toast.success('Portfolio bookmarked')
+      }
+    } catch {
+      toast.error('Failed to bookmark')
+    } finally {
+      setBookmarking(false)
+    }
+  }
+
+  const messageOption: ContactOption = {
+    icon: Message01Icon,
+    label: 'Send a Message',
+    description: `Start a conversation with ${firstName}`,
+    href: `/messages?compose=true&to=${creatorId}&name=${encodedName}`,
+    color: 'from-brand-purple-500 to-brand-purple-500',
+    bg: 'bg-brand-purple-500/10',
+  }
+
+  function getContactOptions(): ContactOption[] {
+    if (!role || role === 'creative') {
+      const options: ContactOption[] = [messageOption]
+      if (creatorIsMentor) {
+        options.unshift({
+          icon: Mortarboard01Icon,
+          label: 'Request Mentorship',
+          description: `Learn from ${firstName}'s experience`,
+          href: `/mentorship?request=${creatorId}&name=${encodedName}`,
+          color: 'from-brand-purple-500 to-brand-purple-500',
+          bg: 'bg-brand-purple-500/10',
+        })
+      }
+      return options
+    }
+
+    if (role === 'employer') {
+      return [
+        {
+          icon: Briefcase01Icon,
+          label: 'Offer a Gig / Job',
+          description: `Hire ${firstName} for your project`,
+          href: `/opportunities/create?for=${creatorId}&name=${encodedName}`,
+          color: 'from-brand-500 to-brand-purple-500',
+          bg: 'bg-brand-purple-500/10 dark:bg-brand-500/10',
+        },
+        messageOption,
+      ]
+    }
+
+    if (role === 'mentor') {
+      return [
+        {
+          icon: Mortarboard01Icon,
+          label: 'Offer Mentorship',
+          description: `Guide ${firstName} in their creative journey`,
+          href: `/mentorship/scout?offer=${creatorId}&name=${encodedName}`,
+          color: 'from-brand-purple-500 to-brand-purple-500',
+          bg: 'bg-brand-purple-500/10',
+        },
+        messageOption,
+      ]
+    }
+
+    if (role === 'investor') {
+      return [
+        {
+          icon: bookmarked ? BookmarkCheck01Icon : Bookmark01Icon,
+          label: bookmarked ? 'Portfolio Bookmarked' : 'Bookmark Portfolio',
+          description: 'Save this portfolio for later',
+          action: bookmarked ? undefined : handleBookmark,
+          color: 'from-brand-500 to-brand-purple-500',
+          bg: 'bg-brand-500/10',
+        },
+        messageOption,
+      ]
+    }
+
+    return [messageOption]
+  }
+
+  const contactOptions = getContactOptions()
 
   return (
     <>
@@ -63,7 +150,7 @@ export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPa
           whileTap={{ scale: 0.97 }}
         >
           <HugeiconsIcon icon={Mail01Icon} className="w-4 h-4" />
-          Contact {creatorName.split(' ')[0]}
+          Contact {firstName}
         </motion.button>
       </div>
 
@@ -101,12 +188,12 @@ export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPa
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-foreground">
-                    {isAuth ? `Contact ${creatorName.split(' ')[0]}` : 'Sign in to Connect'}
+                    {isAuth ? `Contact ${firstName}` : 'Sign in to Connect'}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {isAuth
                       ? 'Choose how you would like to connect'
-                      : `Create an account to hire, collaborate, or sponsor ${creatorName.split(' ')[0]}`
+                      : `Create an account to hire, collaborate, or sponsor ${firstName}`
                     }
                   </p>
                 </div>
@@ -116,20 +203,10 @@ export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPa
               </div>
 
               {isAuth ? (
-                /* ─── Authenticated ─── */
                 <div className="space-y-2">
-                  {contactOptions.map((opt, i) => (
-                    <motion.div
-                      key={opt.label}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.07, ease }}
-                    >
-                      <Link
-                        href={opt.href}
-                        className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 hover:border-brand-500/30 hover:bg-muted/30 transition-all group"
-                        onClick={() => setShowDialog(false)}
-                      >
+                  {contactOptions.map((opt, i) => {
+                    const content = (
+                      <div className="flex items-center gap-4 p-4 rounded-2xl border border-border/50 hover:border-brand-500/30 hover:bg-muted/30 transition-all group">
                         <div className={`w-10 h-10 rounded-xl ${opt.bg} flex items-center justify-center flex-shrink-0`}>
                           <HugeiconsIcon icon={opt.icon} className="w-5 h-5 text-foreground" />
                         </div>
@@ -137,12 +214,32 @@ export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPa
                           <p className="text-sm font-semibold text-foreground group-hover:text-brand-purple-600 dark:group-hover:text-brand-400 transition-colors">{opt.label}</p>
                           <p className="text-[11px] text-muted-foreground">{opt.description}</p>
                         </div>
-                      </Link>
-                    </motion.div>
-                  ))}
+                      </div>
+                    )
+
+                    return (
+                      <motion.div
+                        key={opt.label}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.07, ease }}
+                      >
+                        {opt.href ? (
+                          <Link href={opt.href} onClick={() => setShowDialog(false)}>
+                            {content}
+                          </Link>
+                        ) : opt.action ? (
+                          <button className="w-full text-left" onClick={() => { opt.action!(); setShowDialog(false) }}>
+                            {content}
+                          </button>
+                        ) : (
+                          <div className="opacity-60 cursor-default">{content}</div>
+                        )}
+                      </motion.div>
+                    )
+                  })}
                 </div>
               ) : (
-                /* ─── Not Authenticated ─── */
                 <div className="space-y-4">
                   <div className="rounded-2xl bg-gradient-to-br from-brand-500/10 via-brand-purple-500/5 to-transparent p-5 text-center border border-brand-500/10">
                     <div className="w-12 h-12 rounded-2xl bg-brand-purple-500/10 dark:bg-brand-500/10 flex items-center justify-center mx-auto mb-3">
@@ -150,25 +247,18 @@ export function ContactCreatorButton({ creatorName, creatorUsername, portfolioPa
                     </div>
                     <p className="text-sm text-foreground font-medium mb-1">Join Creatuno</p>
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Sign in to contact {creatorName.split(' ')[0]}, offer jobs, collaborate, or request mentorship.
+                      Sign in to contact {firstName}, offer jobs, collaborate, or request mentorship.
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button
-                      className="w-full rounded-full bg-brand-500 hover:bg-brand-600 text-brand-dark"
-                      asChild
-                    >
+                    <Button className="w-full rounded-full bg-brand-500 hover:bg-brand-600 text-brand-dark" asChild>
                       <Link href={`/sign-in?redirect_url=${redirectUrl}`}>
                         <HugeiconsIcon icon={Login01Icon} className="w-4 h-4 mr-2" />
                         Sign In
                       </Link>
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-full"
-                      asChild
-                    >
+                    <Button variant="outline" className="w-full rounded-full" asChild>
                       <Link href={`/sign-up?redirect_url=${redirectUrl}`}>
                         <HugeiconsIcon icon={UserAdd01Icon} className="w-4 h-4 mr-2" />
                         Create Account

@@ -3,6 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, Cancel01Icon, CheckmarkCircle01Icon, Loading02Icon, Location01Icon, Search01Icon, SentIcon, SparklesIcon, UserAdd01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
@@ -64,6 +65,7 @@ function getGradient(index: number) {
 
 export default function ScoutTalentsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { role, isLoading: sessionLoading } = useSession()
   const [creatives, setCreatives] = useState<Creative[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -85,6 +87,29 @@ export default function ScoutTalentsPage() {
       router.push('/mentorship')
     }
   }, [sessionLoading, role, router])
+
+  // ── Auto-open offer from URL params (e.g. from portfolio contact button) ──
+
+  useEffect(() => {
+    const offerCreativeId = searchParams.get('offer')
+    const offerCreativeName = searchParams.get('name')
+    if (offerCreativeId && creatives.length > 0) {
+      const creative = creatives.find(c => c.user_id === offerCreativeId)
+      if (creative) {
+        setOfferTarget(creative)
+      } else if (offerCreativeName) {
+        setOfferTarget({
+          user_id: offerCreativeId,
+          fullName: decodeURIComponent(offerCreativeName),
+          avatarUrl: null,
+          bio: '',
+          location: '',
+          skills: [],
+          role: 'creative',
+        } as Creative)
+      }
+    }
+  }, [searchParams, creatives])
 
   // ── Data Loading ───────────────────────────────────────────────────────────
 

@@ -27,6 +27,7 @@ export const translations = {
       findMentors: 'Find Mentors',
       villagSquare: 'Village Square',
       scoutTalents: 'Scout Talents',
+      pitchStage: 'Pitch Stage',
     },
 
     // Profile page
@@ -169,6 +170,7 @@ export const translations = {
       findMentors: 'Fɛn Mɛntɔ Dɛm',
       villagSquare: 'Vilej Skwɛa',
       scoutTalents: 'Skawt Talent Dɛm',
+      pitchStage: 'Pitch Stej',
     },
 
     // Profile page

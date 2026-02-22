@@ -58,6 +58,7 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
     case 'investor':
       return [
         ...base,
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.discover'), href: '/portfolios' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.feed'), href: '/feed' },
@@ -67,6 +68,7 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
         ...base,
         { label: t('nav.scoutTalents'), href: '/mentorship/scout' },
         { label: t('nav.mentees'), href: '/mentorship' },
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.feed'), href: '/feed' },
       ]
     default:
@@ -74,6 +76,7 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
         ...base,
         { label: t('nav.portfolios'), href: '/dashboard/portfolios' },
         { label: t('nav.opportunities'), href: '/opportunities' },
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.feed'), href: '/feed' },
         { label: t('nav.findMentors'), href: '/mentorship' },
       ]
@@ -98,6 +101,7 @@ function getMobileMenuLinks(role: string | null, t: (key: string) => string) {
     case 'investor':
       return [
         { label: t('nav.dashboard'), href: dashboardUrl },
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.browsePortfolios'), href: '/portfolios' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.villagSquare'), href: '/feed' },
@@ -110,6 +114,7 @@ function getMobileMenuLinks(role: string | null, t: (key: string) => string) {
         { label: t('nav.dashboard'), href: dashboardUrl },
         { label: t('nav.scoutTalents'), href: '/mentorship/scout' },
         { label: t('nav.mentees'), href: '/mentorship' },
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.villagSquare'), href: '/feed' },
         { label: t('nav.messages'), href: '/messages' },
         { label: t('nav.notifications'), href: '/notifications' },
@@ -121,6 +126,7 @@ function getMobileMenuLinks(role: string | null, t: (key: string) => string) {
         { label: t('nav.portfolios'), href: '/dashboard/portfolios' },
         { label: t('nav.myApplications'), href: '/dashboard/applications' },
         { label: t('nav.opportunities'), href: '/opportunities' },
+        { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.villagSquare'), href: '/feed' },
         { label: t('nav.findMentors'), href: '/mentorship' },
         { label: t('nav.messages'), href: '/messages' },
