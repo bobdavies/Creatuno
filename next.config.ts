@@ -127,10 +127,16 @@ const nextConfig: NextConfig = {
 
   // Experimental features
   experimental: {
-    // Enable Server Actions
     serverActions: {
       bodySizeLimit: "2mb",
     },
+    optimizePackageImports: [
+      'lucide-react',
+      '@hugeicons/react',
+      '@hugeicons/core-free-icons',
+      'react-icons',
+      'motion',
+    ],
   },
 };
 

@@ -5,7 +5,7 @@ import { ArrowLeft01Icon, FloppyDiskIcon, GlobeIcon, Loading02Icon, LockIcon, Sp
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import SpotlightCard from '@/components/SpotlightCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

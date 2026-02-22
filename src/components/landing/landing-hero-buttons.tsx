@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Loading02Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { getRoleBasedDashboard } from '@/lib/auth/user-session'
 import { useLandingAuth } from './landing-auth-context'

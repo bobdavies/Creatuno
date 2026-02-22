@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, BookOpen01Icon, Briefcase01Icon, Cancel01Icon, CheckmarkCircle01Icon, Clock01Icon, ColorPickerIcon, GlobeIcon, LaptopIcon, Loading02Icon, Megaphone01Icon, Message01Icon, SentIcon, SparklesIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
 import React, { useState, useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 import { MdFavoriteBorder, MdCode } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

@@ -6,12 +6,14 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { getRoleBasedDashboard } from '@/lib/auth/user-session'
 import { useLandingAuth } from './landing-auth-context'
 import { cn } from '@/lib/utils'
-import StaggeredMenu from '@/components/StaggeredMenu'
+import dynamic from 'next/dynamic'
+
+const StaggeredMenu = dynamic(() => import('@/components/StaggeredMenu'), { ssr: false })
 
 const ease = [0.23, 1, 0.32, 1] as const
 

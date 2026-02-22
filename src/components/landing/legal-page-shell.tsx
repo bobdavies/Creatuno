@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, ArrowRight01Icon, ArrowUp01Icon, Menu01Icon } from "@hugeicons/core-free-icons";
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { PublicPageLayout } from '@/components/landing/public-page-layout'
 import { cn } from '@/lib/utils'
 
@@ -36,16 +36,22 @@ export function LegalPageShell({ badge, title, subtitle, sections, relatedLinks,
   const [scrollProgress, setScrollProgress] = useState(0)
   const [showBackToTop, setShowBackToTop] = useState(false)
 
-  // Scroll progress bar
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      setScrollProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0)
-      setShowBackToTop(scrollTop > 600)
+    let ticking = false
+    const onScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const scrollTop = window.scrollY
+          const docHeight = document.documentElement.scrollHeight - window.innerHeight
+          setScrollProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0)
+          setShowBackToTop(scrollTop > 600)
+          ticking = false
+        })
+        ticking = true
+      }
     }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   // Scroll spy for active TOC item

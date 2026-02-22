@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowDown01Icon, ArrowRight01Icon, ArrowUp01Icon, ArrowUpDownIcon, Briefcase01Icon, Cancel01Icon, CheckmarkCircle01Icon, HelpCircleIcon, Image01Icon, Loading02Icon, Mail01Icon, Message01Icon, RocketIcon, Search01Icon, SentIcon, UserCircleIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SpotlightCard from '@/components/SpotlightCard'

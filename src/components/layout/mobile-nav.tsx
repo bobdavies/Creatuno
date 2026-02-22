@@ -15,7 +15,7 @@ import {
   CheckListIcon,
   Compass01Icon,
 } from '@hugeicons/core-free-icons'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/providers/user-session-provider'
 import { useTranslation } from '@/lib/i18n/context'

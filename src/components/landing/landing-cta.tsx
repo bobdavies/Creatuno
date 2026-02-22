@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, Loading02Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { getRoleBasedDashboard } from '@/lib/auth/user-session'

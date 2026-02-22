@@ -2,9 +2,10 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 import { useRef, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import NextImage from 'next/image'
 /*
  * Dynamic bento-grid catalog.
  * Fetches real portfolio images from the API, detects orientation
@@ -149,12 +150,12 @@ function PhotoCard({
     >
       <Link href={`/portfolio/view/${portfolio.id}`} className="block h-full">
         <div className="relative h-full rounded-xl sm:rounded-2xl overflow-hidden bg-muted">
-          {/* Real portfolio image */}
-          <img
+          <NextImage
             src={portfolio.firstImage}
             alt={portfolio.title}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] group-hover:rotate-[0.5deg]"
-            loading="lazy"
+            fill
+            sizes="(min-width: 768px) 25vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03] group-hover:rotate-[0.5deg]"
           />
           {/* Bottom gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />

@@ -5,7 +5,7 @@ import { Activity01Icon, Add01Icon, AnalyticsUpIcon, ArrowRight01Icon, Briefcase
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { motion, useInView, AnimatePresence } from 'motion/react'
 import SpotlightCard from '@/components/SpotlightCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

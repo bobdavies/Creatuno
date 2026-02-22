@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon, BookOpen01Icon, BulbIcon, Calendar01Icon, Cancel01Icon, CheckmarkCircle01Icon, Clock01Icon, Loading02Icon, LockIcon, Megaphone01Icon, Mortarboard01Icon, Notification01Icon } from "@hugeicons/core-free-icons";
 import React, { useState, useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 import { MdMic } from 'react-icons/md'
 import SpotlightCard from '@/components/SpotlightCard'
 import { Button } from '@/components/ui/button'

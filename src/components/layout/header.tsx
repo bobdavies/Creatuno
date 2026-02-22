@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useAuth, useUser } from '@clerk/nextjs'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -23,7 +23,9 @@ import { useSession } from '@/components/providers/user-session-provider'
 import { useTranslation } from '@/lib/i18n/context'
 import { getRoleBasedDashboard } from '@/lib/auth/user-session'
 import { cn } from '@/lib/utils'
-import StaggeredMenu from '@/components/StaggeredMenu'
+import dynamic from 'next/dynamic'
+
+const StaggeredMenu = dynamic(() => import('@/components/StaggeredMenu'), { ssr: false })
 
 // ─── Role Helpers (unchanged logic) ─────────────────────────────────────────
 

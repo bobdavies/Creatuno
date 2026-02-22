@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, ReactNode, MouseEventHandler, UIEvent } from 'react';
+import React, { useRef, useState, useEffect, useCallback, ReactNode, MouseEventHandler, UIEvent, useMemo } from 'react';
 import { motion, useInView } from 'motion/react';
 
 interface AnimatedItemProps {
@@ -85,12 +85,19 @@ const AnimatedList: React.FC<AnimatedListProps> = ({
     [onItemSelect]
   );
 
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
-    setTopGradientOpacity(Math.min(scrollTop / 50, 1));
-    const bottomDistance = scrollHeight - (scrollTop + clientHeight);
-    setBottomGradientOpacity(scrollHeight <= clientHeight ? 0 : Math.min(bottomDistance / 50, 1));
-  };
+  const tickingRef = useRef(false);
+  const handleScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
+    if (tickingRef.current) return;
+    tickingRef.current = true;
+    const target = e.target as HTMLDivElement;
+    requestAnimationFrame(() => {
+      const { scrollTop, scrollHeight, clientHeight } = target;
+      setTopGradientOpacity(Math.min(scrollTop / 50, 1));
+      const bottomDistance = scrollHeight - (scrollTop + clientHeight);
+      setBottomGradientOpacity(scrollHeight <= clientHeight ? 0 : Math.min(bottomDistance / 50, 1));
+      tickingRef.current = false;
+    });
+  }, []);
 
   useEffect(() => {
     if (!enableArrowNavigation) return;

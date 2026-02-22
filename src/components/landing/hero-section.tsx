@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react'
 import { LandingHeroButtons } from './landing-hero-buttons'
 import BlurText from '@/components/BlurText'
 import RotatingText from '@/components/RotatingText'
@@ -15,31 +15,31 @@ const Aurora = dynamic(() => import('@/components/Aurora'), { ssr: false })
 /* ------------------------------------------------------------------ */
 const CARD_DATA = [
   {
-    images: ['/hero/architect.png', '/hero/singer.png'],
+    images: ['/hero/architect.webp', '/hero/singer.webp'],
     labels: ['Architecture', 'Vocalist'],
     alts: ['Architect reviewing blueprints', 'Singer performing on stage'],
   },
   {
-    images: ['/hero/music-producer.png', '/hero/performer.png'],
+    images: ['/hero/music-producer.webp', '/hero/performer.webp'],
     labels: ['Music', 'Performer'],
     alts: ['Music producer with MIDI controller', 'Performer on stage'],
   },
   {
-    images: ['/hero/photographer.png', '/hero/photographer-2.png'],
+    images: ['/hero/photographer.webp', '/hero/photographer-2.webp'],
     labels: ['Photography', 'Photography'],
     alts: ['Photographer with camera', 'Photographer with professional gear'],
   },
   {
     images: [
-      '/hero/fashion-designer.png',
-      '/hero/filmmaker.png',
-      '/hero/seamstress.png',
-      '/hero/vocalist.png',
-      '/hero/dancer.png',
-      '/hero/street-photographer.png',
-      '/hero/tailor.png',
-      '/hero/vocalist-2.png',
-      '/hero/potter.png',
+      '/hero/fashion-designer.webp',
+      '/hero/filmmaker.webp',
+      '/hero/seamstress.webp',
+      '/hero/vocalist.webp',
+      '/hero/dancer.webp',
+      '/hero/street-photographer.webp',
+      '/hero/tailor.webp',
+      '/hero/vocalist-2.webp',
+      '/hero/potter.webp',
     ],
     labels: [
       'Fashion',
@@ -388,7 +388,6 @@ export function HeroSection() {
                           fill
                           className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                           sizes="(min-width: 1024px) 15vw, 0px"
-                          priority
                         />
                       </motion.div>
                     </AnimatePresence>
@@ -456,7 +455,6 @@ export function HeroSection() {
                           fill
                           className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                           sizes="(min-width: 1024px) 15vw, 0px"
-                          priority
                         />
                       </motion.div>
                     </AnimatePresence>
@@ -513,7 +511,6 @@ export function HeroSection() {
                           fill
                           className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                           sizes="(min-width: 1024px) 30vw, 0px"
-                          priority
                         />
                       </motion.div>
                     </AnimatePresence>

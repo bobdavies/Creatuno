@@ -4,7 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { AnalyticsUpIcon, ArrowRight01Icon, Briefcase01Icon, CheckmarkCircle01Icon, ColorPickerIcon, GlobeIcon, Mortarboard01Icon, Resize01Icon, RocketIcon, SparklesIcon, Target01Icon, UserGroupIcon, WifiOff01Icon } from "@hugeicons/core-free-icons";
 import React, { useRef } from 'react'
 import Link from 'next/link'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 import { MdFavoriteBorder, MdBolt } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import SpotlightCard from '@/components/SpotlightCard'

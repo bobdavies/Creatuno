@@ -5,7 +5,7 @@ import { AnalyticsUpIcon, ArrowRight01Icon, Briefcase01Icon, Calendar01Icon, Can
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { MdBolt, MdAttachMoney } from 'react-icons/md'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import SpotlightCard from '@/components/SpotlightCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'

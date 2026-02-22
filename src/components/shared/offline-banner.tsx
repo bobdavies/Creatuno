@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Refresh01Icon, WifiOff01Icon } from "@hugeicons/core-free-icons";
 import { useNetworkStatus } from '@/hooks/use-network-status'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 
 interface OfflineBannerProps {
   /** Custom message to display */

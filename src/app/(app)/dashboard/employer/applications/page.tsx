@@ -5,7 +5,7 @@ import { AlertCircleIcon, ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, Ar
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { MdAttachMoney } from 'react-icons/md'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { motion, useInView, AnimatePresence } from 'motion/react'
 import SpotlightCard from '@/components/SpotlightCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
