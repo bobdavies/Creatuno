@@ -192,7 +192,7 @@ export default function InvestorDashboardPage() {
             <div className="flex items-center gap-3">
               <MdAttachMoney className="w-8 h-8 text-brand-purple-600 dark:text-brand-400" />
               <div>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">$0</p>
+                <p className="text-sm font-bold text-muted-foreground">Coming Soon</p>
                 <p className="text-xs text-muted-foreground">Total Invested</p>
               </div>
             </div>

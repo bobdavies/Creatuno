@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
     // Check if Supabase is configured
     if (!isSupabaseConfiguredServer()) {
       return NextResponse.json(
-        { error: 'Supabase not configured', project: null },
-        { status: 200 }
+        { error: 'Database not configured', project: null },
+        { status: 503 }
       )
     }
 

@@ -151,11 +151,16 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// Create notification (typically called from server-side)
+// Create notification (requires auth -- caller can only notify themselves or must be an internal API)
 export async function POST(request: NextRequest) {
   try {
     if (!isSupabaseConfiguredServer()) {
       return NextResponse.json({ error: 'Supabase not configured' }, { status: 200 })
+    }
+
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()

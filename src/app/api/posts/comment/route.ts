@@ -40,14 +40,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to add comment' }, { status: 500 })
     }
 
-    // Update comments count on post
-    const { error: updateError } = await supabase.rpc('increment_comments_count', {
-      row_id: post_id,
-    })
+    // Update comments count on post (count actual comments)
+    const { count } = await supabase
+      .from('comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', post_id)
 
-    if (updateError) {
-      console.error('Error updating comments count:', updateError)
-    }
+    await supabase
+      .from('posts')
+      .update({ comments_count: count ?? 0 })
+      .eq('id', post_id)
 
     // Notify post author (don't notify yourself)
     const { data: post } = await supabase

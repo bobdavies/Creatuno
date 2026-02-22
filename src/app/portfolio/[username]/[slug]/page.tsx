@@ -29,6 +29,17 @@ async function getPortfolio(username: string, slug: string) {
   try {
     const supabase = await createServerClient()
 
+    // Resolve username to user_id first
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('username', username)
+      .single()
+
+    if (!profile) {
+      return null
+    }
+
     const { data: portfolio, error } = await supabase
       .from('portfolios')
       .select(`
@@ -43,6 +54,7 @@ async function getPortfolio(username: string, slug: string) {
         )
       `)
       .eq('slug', slug)
+      .eq('user_id', profile.user_id)
       .eq('is_public', true)
       .single()
 

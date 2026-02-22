@@ -265,15 +265,23 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { id, ...updates } = body
+    const { id, ...rawUpdates } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Opportunity ID is required' }, { status: 400 })
     }
 
+    const ALLOWED_FIELDS = new Set([
+      'title', 'description', 'budget', 'deadline', 'status',
+      'skills_required', 'category', 'location', 'type',
+    ])
+    const updates: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(rawUpdates)) {
+      if (ALLOWED_FIELDS.has(key)) updates[key] = value
+    }
+
     const supabase = await createServerClient()
 
-    // Verify ownership
     const { data: existingOpp } = await supabase
       .from('opportunities')
       .select('user_id')

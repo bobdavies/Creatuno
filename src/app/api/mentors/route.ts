@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     // Transform data for frontend
     const mentors = profiles?.map(p => ({
-      id: p.id,
+      id: p.user_id,
       user_id: p.user_id,
       fullName: p.full_name || 'Unknown',
       avatarUrl: p.avatar_url,

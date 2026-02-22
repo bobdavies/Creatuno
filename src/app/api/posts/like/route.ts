@@ -50,14 +50,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to like post' }, { status: 500 })
       }
 
-      // Update likes count on post
-      const { error: updateError } = await supabase.rpc('increment_likes_count', {
-        row_id: post_id,
-      })
+      // Update likes count on post (count actual likes)
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post_id)
 
-      if (updateError) {
-        console.error('Error updating likes count:', updateError)
-      }
+      await supabase
+        .from('posts')
+        .update({ likes_count: count ?? 0 })
+        .eq('id', post_id)
 
       // Notify post author (don't notify yourself)
       const { data: post } = await supabase
@@ -88,14 +90,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to unlike post' }, { status: 500 })
       }
 
-      // Decrement likes count on post
-      const { error: updateError } = await supabase.rpc('decrement_likes_count', {
-        row_id: post_id,
-      })
+      // Update likes count on post (count actual likes)
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', post_id)
 
-      if (updateError) {
-        console.error('Error updating likes count:', updateError)
-      }
+      await supabase
+        .from('posts')
+        .update({ likes_count: count ?? 0 })
+        .eq('id', post_id)
     }
 
     return NextResponse.json({ success: true })

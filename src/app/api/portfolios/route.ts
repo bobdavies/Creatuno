@@ -154,7 +154,11 @@ export async function DELETE(request: NextRequest) {
       .eq('portfolio_id', portfolioId)
 
     if (projectsDeleteError) {
-      console.warn('Failed to delete portfolio projects:', projectsDeleteError)
+      console.error('Failed to delete portfolio projects:', projectsDeleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete associated projects. Portfolio was not deleted.' },
+        { status: 500 }
+      )
     }
 
     // Delete the portfolio

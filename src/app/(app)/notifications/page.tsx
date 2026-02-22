@@ -86,8 +86,8 @@ function getActionConfig(type: string, data?: Record<string, unknown>): { label:
     case 'mentorship_request':
       return { label: 'REVIEW NOW', href: '/mentorship', icon: ArrowRight01Icon }
     case 'mentorship_offer': {
-      const requestId = data?.request_id as string | undefined
-      return { label: 'VIEW OFFER', href: requestId ? `/mentorship/offer/${requestId}` : '/mentorship', icon: ViewIcon }
+      const offerId = (data?.offer_id ?? data?.request_id ?? data?.id) as string | undefined
+      return { label: 'VIEW OFFER', href: offerId ? `/mentorship/offer/${offerId}` : '/mentorship', icon: ViewIcon }
     }
     case 'mentorship_response':
     case 'mentorship_feedback':

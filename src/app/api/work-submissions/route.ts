@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       ? `A creative has resubmitted revised work (revision ${revisionCount}) for "${opportunity.title}"`
       : `A creative has submitted work for "${opportunity.title}"`
 
-    await supabase.from('notifications').insert({
+    const { error: notifError } = await supabase.from('notifications').insert({
       user_id: opportunity.user_id,
       type: 'work_submitted',
       title: revisionCount > 0 ? 'Revised Work Submitted' : 'Work Submitted',
@@ -224,6 +224,10 @@ export async function POST(request: NextRequest) {
         revision_count: revisionCount,
       },
     })
+
+    if (notifError) {
+      console.error('Failed to send work submission notification:', notifError)
+    }
 
     return NextResponse.json({ submission })
   } catch (error) {
@@ -344,7 +348,7 @@ export async function PATCH(request: NextRequest) {
 
     // Send appropriate notification
     if (status === 'approved') {
-      await supabase.from('notifications').insert({
+      const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: existingSubmission.creative_id,
         type: 'work_approved',
         title: 'Work Approved!',
@@ -355,8 +359,9 @@ export async function PATCH(request: NextRequest) {
           opportunity_id: existingSubmission.opportunity_id,
         },
       })
+      if (notifErr) console.error('Failed to send approval notification:', notifErr)
     } else if (status === 'revision_requested') {
-      await supabase.from('notifications').insert({
+      const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: existingSubmission.creative_id,
         type: 'revision_requested',
         title: 'Revision Requested',
@@ -371,6 +376,7 @@ export async function PATCH(request: NextRequest) {
           revision_count: currentRevisionCount,
         },
       })
+      if (notifErr) console.error('Failed to send revision notification:', notifErr)
     }
 
     return NextResponse.json({ submission })

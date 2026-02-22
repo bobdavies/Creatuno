@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerClient()
     const results: any[] = []
 
+    // Escape SQL LIKE special characters to prevent injection
+    const escaped = query.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+
     // Search portfolios
     if (!type || type === 'portfolio') {
       const { data: portfolios } = await supabase
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
             full_name
           )
         `)
-        .or(`title.ilike.%${query}%,description.ilike.%${query}%,tagline.ilike.%${query}%`)
+        .or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%,tagline.ilike.%${escaped}%`)
         .eq('is_public', true)
         .limit(10)
 
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest) {
       const { data: users } = await supabase
         .from('profiles')
         .select('user_id, full_name, bio, role, skills, avatar_url, location')
-        .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%,skills.cs.{${query}},location.ilike.%${query}%`)
+        .or(`full_name.ilike.%${escaped}%,bio.ilike.%${escaped}%,skills.cs.{${escaped}},location.ilike.%${escaped}%`)
         .limit(10)
 
       if (users) {
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
       const { data: opportunities } = await supabase
         .from('opportunities')
         .select('id, title, description, type, category, budget_min, budget_max, currency, location')
-        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+        .or(`title.ilike.%${escaped}%,description.ilike.%${escaped}%,category.ilike.%${escaped}%`)
         .eq('status', 'open')
         .limit(10)
 
@@ -109,7 +112,7 @@ export async function GET(request: NextRequest) {
             full_name
           )
         `)
-        .ilike('content', `%${query}%`)
+        .ilike('content', `%${escaped}%`)
         .order('created_at', { ascending: false })
         .limit(10)
 

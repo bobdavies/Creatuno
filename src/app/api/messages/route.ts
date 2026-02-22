@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
 
     if (countOnly) {
+      const column = folder === 'sent' ? 'sender_id' : 'receiver_id'
       const { count } = await supabase
         .from('messages')
         .select('id', { count: 'exact', head: true })
-        .eq('sender_id', userId)
+        .eq(column, userId)
 
       return privateCachedJson({ count: count ?? 0 })
     }

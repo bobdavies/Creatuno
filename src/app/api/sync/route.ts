@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
           .from(table as any)
           .update(data)
           .eq('id', id)
+          .eq('user_id', userId)
           .select()
           .single()
 
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
           .from(table as any)
           .delete()
           .eq('id', id)
+          .eq('user_id', userId)
 
         if (error) {
           console.error(`Sync delete error [${table}]:`, error)

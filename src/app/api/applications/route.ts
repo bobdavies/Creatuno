@@ -184,10 +184,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 })
     }
 
-    // Update application count on opportunity
-    await supabase.rpc('increment_applications_count', {
-      row_id: opportunity_id,
-    })
+    // Update application count on opportunity (count actual applications)
+    const { count: appCount } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('opportunity_id', opportunity_id)
+
+    await supabase
+      .from('opportunities')
+      .update({ applications_count: appCount ?? 0 })
+      .eq('id', opportunity_id)
 
     // Notify the opportunity author about the new application
     const { data: opportunity } = await supabase
@@ -241,6 +247,28 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase = await createServerClient()
+
+    // Verify the caller owns the opportunity (employer) or is the applicant (withdraw)
+    const { data: existingApp } = await supabase
+      .from('applications')
+      .select('id, applicant_id, opportunity_id, opportunities!inner(user_id)')
+      .eq('id', application_id)
+      .single()
+
+    if (!existingApp) {
+      return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+    }
+
+    const oppOwnerId = (existingApp as any).opportunities?.user_id
+    const isOwner = oppOwnerId === userId
+    const isApplicant = existingApp.applicant_id === userId
+
+    if (status === 'withdrawn' && !isApplicant) {
+      return NextResponse.json({ error: 'Only the applicant can withdraw' }, { status: 403 })
+    }
+    if (status !== 'withdrawn' && !isOwner) {
+      return NextResponse.json({ error: 'Only the opportunity owner can change status' }, { status: 403 })
+    }
 
     const { data: application, error } = await supabase
       .from('applications')
@@ -332,10 +360,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to withdraw application' }, { status: 500 })
     }
 
-    // Decrement application count
-    await supabase.rpc('decrement_applications_count', {
-      row_id: existingApp.opportunity_id,
-    })
+    // Update application count on opportunity (count actual applications)
+    const { count: appCount } = await supabase
+      .from('applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('opportunity_id', existingApp.opportunity_id)
+
+    await supabase
+      .from('opportunities')
+      .update({ applications_count: appCount ?? 0 })
+      .eq('id', existingApp.opportunity_id)
 
     return NextResponse.json({ success: true })
   } catch (error) {

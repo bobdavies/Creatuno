@@ -73,11 +73,16 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    await supabase
+    const { error } = await supabase
       .from('push_subscriptions')
       .delete()
       .eq('user_id', userId)
       .eq('endpoint', endpoint)
+
+    if (error) {
+      console.error('Push subscription delete error:', error)
+      return NextResponse.json({ error: 'Failed to remove subscription' }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

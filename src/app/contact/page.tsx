@@ -37,9 +37,9 @@ const contactInfo = [
 ]
 
 const socials = [
-  { icon: TwitterIcon, label: 'Twitter / X', href: '#', handle: '@creatuno' },
-  { icon: Linkedin01Icon, label: 'LinkedIn', href: '#', handle: 'Creatuno' },
-  { icon: InstagramIcon, label: 'Instagram', href: '#', handle: '@creatuno' },
+  { icon: TwitterIcon, label: 'Twitter / X', href: 'https://x.com/creatuno', handle: '@creatuno' },
+  { icon: Linkedin01Icon, label: 'LinkedIn', href: 'https://linkedin.com/company/creatuno', handle: 'Creatuno' },
+  { icon: InstagramIcon, label: 'Instagram', href: 'https://instagram.com/creatuno', handle: '@creatuno' },
 ]
 
 const subjectOptions = [

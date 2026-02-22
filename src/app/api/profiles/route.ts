@@ -2,10 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // Create or update user profile
 export async function POST(request: NextRequest) {
+  if (!isSupabaseConfiguredServer()) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
+  }
+
   try {
     const { userId } = await auth()
     
