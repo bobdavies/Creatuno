@@ -313,16 +313,22 @@ export async function PATCH(request: NextRequest) {
     if (status === 'revision_requested') {
       // Enforce the 2-revision cap
       if (currentRevisionCount >= 2) {
+        // After 2 revisions, employer must pay 50% for creative's time
         return NextResponse.json(
           {
-            error: 'Maximum revisions (2) reached. Please approve the work.',
+            error: 'Maximum revisions (2) reached. You must compensate the creative.',
+            must_pay_partial: true,
+            payment_percentage: 50,
+            submission_id,
           },
           { status: 400 },
         )
       }
       updateData.status = 'revision_requested'
     } else if (status === 'approved') {
-      updateData.status = 'approved'
+      // Instead of setting 'approved' directly, set 'payment_pending'
+      // The actual 'approved' status is set by the webhook after payment
+      updateData.status = 'payment_pending'
     }
 
     const { data: submission, error } = await supabase
@@ -337,7 +343,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update submission' }, { status: 500 })
     }
 
-    // Fetch opportunity title for notification
+    // Fetch opportunity title and application budget for notification / escrow
     const { data: opportunity } = await supabase
       .from('opportunities')
       .select('title')
@@ -348,11 +354,35 @@ export async function PATCH(request: NextRequest) {
 
     // Send appropriate notification
     if (status === 'approved') {
+      // Create an escrow record so the frontend can initiate payment
+      const { data: application } = await supabase
+        .from('applications')
+        .select('proposed_budget')
+        .eq('id', existingSubmission.application_id)
+        .single()
+
+      const agreedAmount = Number(application?.proposed_budget || 0)
+
+      await supabase.from('delivery_escrows').insert({
+        submission_id,
+        application_id: existingSubmission.application_id,
+        opportunity_id: existingSubmission.opportunity_id,
+        creative_id: existingSubmission.creative_id,
+        employer_id: existingSubmission.employer_id,
+        agreed_amount: agreedAmount,
+        payment_amount: agreedAmount,
+        payment_percentage: 100,
+        currency: 'SLE',
+        platform_fee: 0,
+        net_payout_amount: agreedAmount,
+        status: 'review_approved',
+      })
+
       const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: existingSubmission.creative_id,
         type: 'work_approved',
-        title: 'Work Approved!',
-        message: `Your work for "${oppTitle}" has been approved.`,
+        title: 'Work Approved - Payment Pending',
+        message: `Your work for "${oppTitle}" has been approved! Payment is being processed.`,
         data: {
           submission_id,
           application_id: existingSubmission.application_id,
@@ -360,6 +390,12 @@ export async function PATCH(request: NextRequest) {
         },
       })
       if (notifErr) console.error('Failed to send approval notification:', notifErr)
+
+      return NextResponse.json({
+        submission,
+        payment_required: true,
+        payment_percentage: 100,
+      })
     } else if (status === 'revision_requested') {
       const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: existingSubmission.creative_id,

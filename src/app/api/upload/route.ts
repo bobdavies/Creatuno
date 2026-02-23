@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     const postTypes = [...imageTypes, ...videoTypes, ...audioTypes]
 
     const isDeliverables = bucket === 'deliverables'
+    const actualBucket = isDeliverables ? 'deliverables-protected' : bucket
     const isPosts = bucket === 'posts'
     const allowedTypes = isDeliverables ? [...deliverableTypes, ...audioTypes] : isPosts ? postTypes : imageTypes
 
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from(bucket)
+      .from(actualBucket)
       .upload(filename, buffer, {
         contentType: normalizedType,
         cacheControl: '3600',
@@ -107,9 +108,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
     }
 
-    // Get public URL
+    if (isDeliverables) {
+      // Private bucket: return storage path only, no public URL
+      return NextResponse.json({
+        url: null,
+        path: data.path,
+        bucket: actualBucket,
+        protected: true,
+      })
+    }
+
+    // Public buckets: return public URL
     const { data: urlData } = supabase.storage
-      .from(bucket)
+      .from(actualBucket)
       .getPublicUrl(data.path)
 
     return NextResponse.json({ 

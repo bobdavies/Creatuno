@@ -41,11 +41,29 @@ interface WorkSubmission {
   creative_id: string
   employer_id: string
   message: string
-  files: { url: string; name: string; size: number; type: string }[]
-  status: 'submitted' | 'revision_requested' | 'approved'
+  files: { url: string; name: string; size: number; type: string; path?: string; bucket?: string; protected?: boolean }[]
+  status: 'submitted' | 'revision_requested' | 'approved' | 'payment_pending' | 'superseded'
+  revision_count?: number
   feedback: string | null
   created_at: string
   updated_at: string
+}
+
+interface EscrowStatus {
+  escrow: {
+    id: string
+    status: string
+    payment_amount: number
+    payment_percentage: number
+    currency: string
+    files_released: boolean
+    agreed_amount: number
+  } | null
+  payment_status: string
+  files_released: boolean
+  payment_amount?: number
+  payment_percentage?: number
+  currency?: string
 }
 
 interface Application {
@@ -163,6 +181,11 @@ export default function EmployerApplicationsPage() {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false)
   const [isUpdatingSubmission, setIsUpdatingSubmission] = useState(false)
 
+  // Payment state
+  const [escrowStatusMap, setEscrowStatusMap] = useState<Record<string, EscrowStatus>>({})
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false)
+  const [mandatoryPayDialog, setMandatoryPayDialog] = useState<{ open: boolean; submissionId: string; amount: number } | null>(null)
+
   // Stats ref for count-up
   const statsRef = useRef(null)
   const statsInView = useInView(statsRef, { once: true, margin: '-40px' })
@@ -264,23 +287,83 @@ export default function EmployerApplicationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ submission_id: submissionId, status, feedback }),
       })
+
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
         setDeliveriesMap(prev => ({
           ...prev,
           [applicationId]: (prev[applicationId] || []).map(s =>
             s.id === submissionId ? { ...s, status: data.submission.status, feedback: data.submission.feedback } : s
           ),
         }))
-        toast.success(status === 'approved' ? 'Work approved!' : 'Revision requested')
+
+        if (data.payment_required) {
+          toast.success('Work approved! Redirecting to payment...')
+          initiatePayment(submissionId, data.payment_percentage || 100)
+        } else {
+          toast.success(status === 'approved' ? 'Work approved!' : 'Revision requested')
+        }
       } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to update submission')
+        if (data.must_pay_partial) {
+          // Max revisions exhausted -- show mandatory 50% payment dialog
+          const app = applications.find(a =>
+            (deliveriesMap[a.id] || []).some(s => s.id === submissionId)
+          )
+          const budget = app?.proposed_budget || 0
+          setMandatoryPayDialog({
+            open: true,
+            submissionId,
+            amount: budget * 0.5,
+          })
+        } else {
+          toast.error(data.error || 'Failed to update submission')
+        }
       }
     } catch {
       toast.error('Failed to update submission')
     } finally {
       setIsUpdatingSubmission(false)
+    }
+  }
+
+  const initiatePayment = async (submissionId: string, paymentPercentage: number) => {
+    setIsPaymentProcessing(true)
+    try {
+      const response = await fetch('/api/payments/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submission_id: submissionId,
+          payment_percentage: paymentPercentage,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl
+        }
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to initiate payment')
+      }
+    } catch {
+      toast.error('Failed to initiate payment')
+    } finally {
+      setIsPaymentProcessing(false)
+    }
+  }
+
+  const fetchEscrowStatus = async (submissionId: string) => {
+    try {
+      const response = await fetch(`/api/payments/status?submission_id=${submissionId}`)
+      if (response.ok) {
+        const data: EscrowStatus = await response.json()
+        setEscrowStatusMap(prev => ({ ...prev, [submissionId]: data }))
+      }
+    } catch {
+      // Silently fail
     }
   }
 
@@ -589,6 +672,8 @@ export default function EmployerApplicationsPage() {
                                 isLoadingDeliveries={loadingDeliveries.has(app.id)}
                                 isExpandedCover={expandedCovers.has(app.id)}
                                 isUpdatingSubmission={isUpdatingSubmission}
+                                isPaymentProcessing={isPaymentProcessing}
+                                escrowStatusMap={escrowStatusMap}
                                 onUpdateStatus={handleUpdateStatus}
                                 onToggleDeliveries={toggleDeliveries}
                                 onToggleCover={() => {
@@ -597,6 +682,8 @@ export default function EmployerApplicationsPage() {
                                   setExpandedCovers(next)
                                 }}
                                 onReviewSubmission={handleReviewSubmission}
+                                onInitiatePayment={initiatePayment}
+                                onFetchEscrowStatus={fetchEscrowStatus}
                               />
                             ))}
         </div>
@@ -664,6 +751,62 @@ export default function EmployerApplicationsPage() {
         )}
       </AnimatePresence>
 
+      {/* ━━━ Mandatory 50% Payment Dialog ━━━ */}
+      <Dialog open={mandatoryPayDialog?.open || false} onOpenChange={(open) => !open && setMandatoryPayDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Creative Compensation Required</DialogTitle>
+            <DialogDescription>
+              Maximum revisions (2) have been reached. You must compensate the creative for their time with 50% of the agreed amount.
+            </DialogDescription>
+          </DialogHeader>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-4 mt-2"
+          >
+            <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+              <p className="text-sm font-semibold text-orange-500">Amount Due</p>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                SLE {mandatoryPayDialog?.amount?.toLocaleString() || '0'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                50% of the original agreed amount
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This payment compensates the creative for their time and effort. You will not receive the work files.
+            </p>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-lg"
+                onClick={() => setMandatoryPayDialog(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white"
+                disabled={isPaymentProcessing}
+                onClick={() => {
+                  if (mandatoryPayDialog?.submissionId) {
+                    initiatePayment(mandatoryPayDialog.submissionId, 50)
+                  }
+                }}
+              >
+                {isPaymentProcessing ? (
+                  <HugeiconsIcon icon={Loading02Icon} className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <MdAttachMoney className="w-4 h-4 mr-1" />
+                )}
+                Pay 50%
+              </Button>
+            </div>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+
       {/* ━━━ Revision Dialog ━━━ */}
       <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
         <DialogContent className="max-w-md">
@@ -728,10 +871,14 @@ function ApplicationRow({
   isLoadingDeliveries,
   isExpandedCover,
   isUpdatingSubmission,
+  isPaymentProcessing,
+  escrowStatusMap,
   onUpdateStatus,
   onToggleDeliveries,
   onToggleCover,
   onReviewSubmission,
+  onInitiatePayment,
+  onFetchEscrowStatus,
 }: {
   app: Application
   index: number
@@ -741,10 +888,14 @@ function ApplicationRow({
   isLoadingDeliveries: boolean
   isExpandedCover: boolean
   isUpdatingSubmission: boolean
+  isPaymentProcessing: boolean
+  escrowStatusMap: Record<string, EscrowStatus>
   onUpdateStatus: (id: string, status: string) => void
   onToggleDeliveries: (id: string) => void
   onToggleCover: () => void
   onReviewSubmission: (sub: WorkSubmission, action: 'approved' | 'revision_requested') => void
+  onInitiatePayment: (submissionId: string, percentage: number) => void
+  onFetchEscrowStatus: (submissionId: string) => void
 }) {
   const cfg = statusConfig[app.status as StatusKey] || statusConfig.pending
   const urgency = getUrgencyDays(app.created_at)
@@ -928,7 +1079,11 @@ function ApplicationRow({
                               </div>
                 ) : (deliveries?.length || 0) > 0 ? (
                   <div className="space-y-2.5">
-                    {deliveries!.map((sub, si) => (
+                    {deliveries!.filter(s => s.status !== 'superseded').map((sub, si) => {
+                      const escrow = escrowStatusMap[sub.id]
+                      const filesReleased = escrow?.files_released || sub.status === 'approved'
+
+                      return (
                       <motion.div
                         key={sub.id}
                         initial={{ opacity: 0, y: 8 }}
@@ -939,13 +1094,18 @@ function ApplicationRow({
                         <div className="flex items-center justify-between gap-3 mb-1.5">
                                       <div className="flex items-center gap-2">
                             <SubmissionStatusBadge status={sub.status} />
+                            {sub.revision_count !== undefined && sub.revision_count > 0 && (
+                              <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-500 border-orange-500/30">
+                                Rev {sub.revision_count}/2
+                              </Badge>
+                            )}
                             <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(sub.created_at)}</span>
                                       </div>
                                       {sub.status === 'submitted' && (
                             <div className="flex gap-1.5">
                               <motion.div whileTap={{ scale: 0.93 }}>
                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-6 text-[10px] rounded-md gap-1 px-2" disabled={isUpdatingSubmission} onClick={() => onReviewSubmission(sub, 'approved')}>
-                                  {isUpdatingSubmission ? <HugeiconsIcon icon={Loading02Icon} className="w-3 h-3 animate-spin" /> : <><HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3 h-3" /> Approve</>}
+                                  {isUpdatingSubmission ? <HugeiconsIcon icon={Loading02Icon} className="w-3 h-3 animate-spin" /> : <><HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3 h-3" /> Approve & Pay</>}
                                           </Button>
                               </motion.div>
                               <motion.div whileTap={{ scale: 0.93 }}>
@@ -954,6 +1114,21 @@ function ApplicationRow({
                                           </Button>
                               </motion.div>
                                         </div>
+                                      )}
+                                      {sub.status === 'payment_pending' && (
+                            <motion.div whileTap={{ scale: 0.93 }}>
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-6 text-[10px] rounded-md gap-1 px-2"
+                                disabled={isPaymentProcessing}
+                                onClick={() => onInitiatePayment(sub.id, 100)}
+                              >
+                                {isPaymentProcessing
+                                  ? <HugeiconsIcon icon={Loading02Icon} className="w-3 h-3 animate-spin" />
+                                  : <><MdAttachMoney className="w-3 h-3" /> Pay Now</>
+                                }
+                              </Button>
+                            </motion.div>
                                       )}
                                     </div>
 
@@ -966,13 +1141,38 @@ function ApplicationRow({
 
                                     {sub.files && sub.files.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
-                                        {sub.files.map((file, idx) => (
-                              <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background border border-border/50 hover:border-brand-500/40 transition-colors text-[10px] group/file">
-                                <HugeiconsIcon icon={FileAttachmentIcon} className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-foreground truncate max-w-[100px]">{file.name}</span>
-                                <HugeiconsIcon icon={Download01Icon} className="w-2.5 h-2.5 text-muted-foreground group-hover/file:text-brand-purple-600 dark:text-brand-400 transition-colors" />
-                                          </a>
-                                        ))}
+                                        {sub.files.map((file, idx) => {
+                              const isProtected = file.protected || file.bucket === 'deliverables-protected'
+                              const isImage = file.type?.startsWith('image/')
+
+                              if (filesReleased || !isProtected) {
+                                const downloadUrl = isProtected
+                                  ? `/api/deliverables/download/${idx}?submission_id=${sub.id}&path=${encodeURIComponent(file.path || '')}`
+                                  : file.url
+                                return (
+                                  <a key={idx} href={downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background border border-emerald-500/40 hover:border-emerald-500/60 transition-colors text-[10px] group/file">
+                                    <HugeiconsIcon icon={FileAttachmentIcon} className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-foreground truncate max-w-[100px]">{file.name}</span>
+                                    <HugeiconsIcon icon={Download01Icon} className="w-2.5 h-2.5 text-emerald-500" />
+                                  </a>
+                                )
+                              }
+
+                              return (
+                                <div key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background border border-border/50 text-[10px]" title="Preview only — pay to download">
+                                  <HugeiconsIcon icon={FileAttachmentIcon} className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-foreground truncate max-w-[100px]">{file.name}</span>
+                                  {isImage ? (
+                                    <HugeiconsIcon icon={ViewIcon} className="w-2.5 h-2.5 text-brand-500" />
+                                  ) : (
+                                    <svg className="w-2.5 h-2.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                  )}
+                                </div>
+                              )
+                            })}
+                            {!filesReleased && sub.files.some(f => f.protected || f.bucket === 'deliverables-protected') && (
+                              <span className="text-[10px] text-muted-foreground italic self-center ml-1">Pay to download</span>
+                            )}
                                       </div>
                                     )}
 
@@ -983,7 +1183,8 @@ function ApplicationRow({
                                       </div>
                                     )}
                       </motion.div>
-                                ))}
+                      )
+                    })}
                               </div>
                             ) : (
                   <div className="text-center py-5">
@@ -1018,11 +1219,25 @@ function SubmissionStatusBadge({ status }: { status: string }) {
           Revision Requested
         </Badge>
       )
+    case 'payment_pending':
+      return (
+        <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30 text-[10px] gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+          Awaiting Payment
+        </Badge>
+      )
     case 'approved':
       return (
         <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px] gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          Approved
+          Paid & Approved
+        </Badge>
+      )
+    case 'superseded':
+      return (
+        <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[10px] gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+          Superseded
         </Badge>
       )
     default:

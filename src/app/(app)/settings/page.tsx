@@ -7,6 +7,7 @@ import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -35,18 +36,95 @@ const roleColors: Record<string, { color: string; bg: string; border: string }> 
 
 export default function SettingsPage() {
   const { user } = useUser()
-  const { handleSignOut, role } = useSession()
+  const { handleSignOut, role, userId } = useSession()
   const { settings, isLoaded, toggleSetting, updateSetting } = useSettings()
   const { setTheme } = useTheme()
   const { t, setLanguage } = useTranslation()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isClearingCache, setIsClearingCache] = useState(false)
 
+  // Payment method state
+  const [paymentProvider, setPaymentProvider] = useState<string>('')
+  const [paymentProviderId, setPaymentProviderId] = useState<string>('')
+  const [paymentAccount, setPaymentAccount] = useState<string>('')
+  const [isSavingPayment, setIsSavingPayment] = useState(false)
+  const [paymentLoaded, setPaymentLoaded] = useState(false)
+
   useEffect(() => {
     if (isLoaded && settings.theme) {
       setTheme(settings.theme)
     }
   }, [isLoaded, settings.theme, setTheme])
+
+  useEffect(() => {
+    if (userId && role === 'creative' && !paymentLoaded) {
+      loadPaymentSettings()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, role])
+
+  const loadPaymentSettings = async () => {
+    try {
+      const res = await fetch('/api/profiles')
+      if (res.ok) {
+        const data = await res.json()
+        const profile = data.profile
+        if (profile) {
+          setPaymentProvider(profile.payment_provider || '')
+          setPaymentProviderId(profile.payment_provider_id || '')
+          setPaymentAccount(profile.payment_account || '')
+        }
+        setPaymentLoaded(true)
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  const providerOptions: { value: string; label: string; providerId: string }[] = [
+    { value: 'momo', label: 'Orange Money', providerId: 'm17' },
+    { value: 'momo', label: 'Afrimoney', providerId: 'm18' },
+    { value: 'wallet', label: 'SafulPay (Vault)', providerId: 'dw001' },
+    { value: 'bank', label: 'Sierra Leone Commercial Bank', providerId: 'slb001' },
+    { value: 'bank', label: 'Rokel Commercial Bank', providerId: 'slb004' },
+    { value: 'bank', label: 'Zenith Bank SL', providerId: 'slb007' },
+  ]
+
+  const handlePaymentProviderChange = (providerId: string) => {
+    const option = providerOptions.find(o => o.providerId === providerId)
+    if (option) {
+      setPaymentProvider(option.value)
+      setPaymentProviderId(option.providerId)
+    }
+  }
+
+  const handleSavePayment = async () => {
+    if (!paymentProvider || !paymentProviderId || !paymentAccount) {
+      toast.error('Please fill in all payment fields')
+      return
+    }
+    setIsSavingPayment(true)
+    try {
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payment_provider: paymentProvider,
+          payment_provider_id: paymentProviderId,
+          payment_account: paymentAccount,
+        }),
+      })
+      if (res.ok) {
+        toast.success('Payment method saved')
+      } else {
+        toast.error('Failed to save payment method')
+      }
+    } catch {
+      toast.error('Failed to save payment method')
+    } finally {
+      setIsSavingPayment(false)
+    }
+  }
 
   const handleThemeChange = (value: ThemeMode) => {
     updateSetting('theme', value)
@@ -248,6 +326,80 @@ export default function SettingsPage() {
 
           {/* ━━━ RIGHT COLUMN ━━━ */}
           <div className="space-y-10">
+
+            {/* ── Payment Method (creatives only) ── */}
+            {currentRole === 'creative' && (
+              <section>
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 pb-2 border-b border-border">
+                  Payment Method
+                </h3>
+                <div className="pt-4 space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Set up your payment method to receive payments from employers. This is required before you can receive payouts.
+                  </p>
+
+                  <div>
+                    <Label className="font-medium text-sm">Payment Provider</Label>
+                    <Select value={paymentProviderId} onValueChange={handlePaymentProviderChange}>
+                      <SelectTrigger className="w-full mt-1.5">
+                        <SelectValue placeholder="Select your payment provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providerOptions.map((opt) => (
+                          <SelectItem key={opt.providerId} value={opt.providerId}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="font-medium text-sm">
+                      {paymentProvider === 'bank' ? 'Account Number' : 'Phone Number'}
+                    </Label>
+                    <Input
+                      className="mt-1.5"
+                      placeholder={paymentProvider === 'bank' ? 'Enter your bank account number' : 'e.g. +23278123456'}
+                      value={paymentAccount}
+                      onChange={(e) => setPaymentAccount(e.target.value)}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {paymentProvider === 'momo'
+                        ? 'The mobile money number linked to your account'
+                        : paymentProvider === 'wallet'
+                        ? 'Your SafulPay (Vault) phone number or wallet ID'
+                        : paymentProvider === 'bank'
+                        ? 'Your bank account number'
+                        : 'Select a provider first'}
+                    </p>
+                  </div>
+
+                  <Button
+                    className="w-full rounded-lg bg-brand-purple-600 hover:bg-brand-purple-700 text-white"
+                    onClick={handleSavePayment}
+                    disabled={isSavingPayment || !paymentProvider || !paymentAccount}
+                  >
+                    {isSavingPayment ? (
+                      <><HugeiconsIcon icon={Loading02Icon} className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                    ) : (
+                      'Save Payment Method'
+                    )}
+                  </Button>
+
+                  {paymentLoaded && paymentProvider && paymentAccount && (
+                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                      <p className="text-xs font-medium text-emerald-500">
+                        Payment method configured
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {providerOptions.find(o => o.providerId === paymentProviderId)?.label} — {paymentAccount}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* ── Data & Storage (open section) ── */}
             <section>
