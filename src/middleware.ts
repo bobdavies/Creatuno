@@ -24,6 +24,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/blog-subscribe', // Blog subscription endpoint
   '/api/careers-apply', // Career application endpoint
   '/api/webhooks/(.*)', // Webhook endpoints
+  '/api/payments/webhook', // Monime payment webhook (server-to-server)
+  '/api/payments/success', // Monime post-payment redirect
   '/api/public/(.*)', // Public API routes
   '/api/portfolios/public', // Public portfolios API
   '/api/opportunities', // Public opportunities API (GET)
