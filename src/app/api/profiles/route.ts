@@ -4,6 +4,27 @@ import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
+function getSafeErrorDetails(error: unknown): { error: string; detail?: string; hint?: string; code?: string } {
+  const e = error as { message?: string; details?: string; hint?: string; code?: string } | null
+  const message = e?.message || 'Failed to save profile'
+  const lower = message.toLowerCase()
+
+  if (lower.includes('payout_mode') || lower.includes('user_wallets') || lower.includes('wallet_ledger') || lower.includes('cashout_requests')) {
+    return {
+      error: 'Wallet cashout schema is not fully applied in the database',
+      detail: 'Apply migration 011_wallet_cashout.sql and retry.',
+      code: e?.code,
+    }
+  }
+
+  return {
+    error: 'Failed to save profile',
+    detail: e?.details || e?.message,
+    hint: e?.hint,
+    code: e?.code,
+  }
+}
+
 // Create or update user profile
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
@@ -33,6 +54,10 @@ export async function POST(request: NextRequest) {
       hiring_categories,
       investment_interests,
       investment_budget,
+      payment_provider,
+      payment_provider_id,
+      payment_account,
+      payout_mode,
     } = body
 
     const supabase = await createServerClient()
@@ -67,6 +92,10 @@ export async function POST(request: NextRequest) {
       if (investment_interests !== undefined) updateData.investment_interests = investment_interests
       if (investment_budget !== undefined) updateData.investment_budget = investment_budget
       if (avatar_url !== undefined) updateData.avatar_url = avatar_url
+      if (payment_provider !== undefined) updateData.payment_provider = payment_provider
+      if (payment_provider_id !== undefined) updateData.payment_provider_id = payment_provider_id
+      if (payment_account !== undefined) updateData.payment_account = payment_account
+      if (payout_mode !== undefined) updateData.payout_mode = payout_mode
 
       const { data, error } = await supabase
         .from('profiles')
@@ -96,6 +125,10 @@ export async function POST(request: NextRequest) {
         investment_interests: investment_interests || [],
         investment_budget: investment_budget || null,
         avatar_url: avatar_url || null,
+        payment_provider: payment_provider || null,
+        payment_provider_id: payment_provider_id || null,
+        payment_account: payment_account || null,
+        payout_mode: payout_mode || 'auto',
       }
 
       const { data, error } = await supabase
@@ -109,10 +142,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Profile API error:', error)
-    return NextResponse.json(
-      { error: 'Failed to save profile' },
-      { status: 500 }
-    )
+    return NextResponse.json(getSafeErrorDetails(error), { status: 500 })
   }
 }
 

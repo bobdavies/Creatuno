@@ -25,7 +25,9 @@ const isPublicRoute = createRouteMatcher([
   '/api/careers-apply', // Career application endpoint
   '/api/webhooks/(.*)', // Webhook endpoints
   '/api/payments/webhook', // Monime payment webhook (server-to-server)
-  '/api/payments/success', // Monime post-payment redirect
+  '/api/payments/success', // Monime post-payment redirect (employer payments)
+  '/api/payments/pitch-success', // Monime post-payment redirect (pitch funding)
+  '/payment-return(.*)', // Public post-payment landing page
   '/api/public/(.*)', // Public API routes
   '/api/portfolios/public', // Public portfolios API
   '/api/opportunities', // Public opportunities API (GET)
@@ -43,18 +45,19 @@ const isProtectedRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
+  // Allow public routes immediately to avoid Clerk handshake redirects
+  // on external provider callbacks (e.g. Monime success webhooks/returns).
+  if (isPublicRoute(req)) {
+    return NextResponse.next()
+  }
+
   const { userId } = await auth()
-  
+
   // Protect authenticated routes
   if (isProtectedRoute(req) && !userId) {
     const signInUrl = new URL('/sign-in', req.url)
     signInUrl.searchParams.set('redirect_url', req.url)
     return NextResponse.redirect(signInUrl)
-  }
-
-  // Allow public routes
-  if (isPublicRoute(req)) {
-    return NextResponse.next()
   }
 
   // For other routes, check if user is authenticated

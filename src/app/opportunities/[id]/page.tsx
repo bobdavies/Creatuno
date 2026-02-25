@@ -65,11 +65,21 @@ interface ServerPortfolio {
   is_public: boolean
 }
 
+interface WorkSubmissionFile {
+  url: string | null
+  path?: string
+  bucket?: string
+  protected?: boolean
+  name: string
+  size: number
+  type: string
+}
+
 interface WorkSubmissionItem {
   id: string
   message: string
-  files: { url: string; name: string; size: number; type: string }[]
-  status: 'submitted' | 'revision_requested' | 'approved'
+  files: WorkSubmissionFile[]
+  status: 'submitted' | 'revision_requested' | 'approved' | 'payment_pending' | 'superseded'
   feedback: string | null
   created_at: string
 }
@@ -99,6 +109,8 @@ function getSubmissionStatusColor(status: string) {
     case 'submitted': return { dot: 'bg-brand-purple-500', ring: 'ring-brand-purple-500/30', text: 'text-brand-purple-600 dark:text-brand-400', bgLight: 'bg-brand-purple-500/10', border: 'border-brand-purple-500/30' }
     case 'revision_requested': return { dot: 'bg-brand-500', ring: 'ring-brand-500/30', text: 'text-brand-600 dark:text-brand-400', bgLight: 'bg-brand-500/10', border: 'border-brand-500/30' }
     case 'approved': return { dot: 'bg-green-500', ring: 'ring-green-500/30', text: 'text-green-500', bgLight: 'bg-green-500/10', border: 'border-green-500/30' }
+    case 'payment_pending': return { dot: 'bg-orange-500', ring: 'ring-orange-500/30', text: 'text-orange-500', bgLight: 'bg-orange-500/10', border: 'border-orange-500/30' }
+    case 'superseded': return { dot: 'bg-slate-400', ring: 'ring-slate-400/30', text: 'text-slate-400', bgLight: 'bg-slate-400/10', border: 'border-slate-400/30' }
     default: return { dot: 'bg-muted-foreground', ring: 'ring-muted-foreground/30', text: 'text-muted-foreground', bgLight: 'bg-muted', border: 'border-border' }
   }
 }
@@ -146,6 +158,8 @@ export default function OpportunityDetailPage() {
   const [isSubmittingWork, setIsSubmittingWork] = useState(false)
   const [submissions, setSubmissions] = useState<WorkSubmissionItem[]>([])
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; fileName: string; phase: 'uploading' | 'submitting' } | null>(null)
 
 
   useEffect(() => {
@@ -227,21 +241,34 @@ export default function OpportunityDetailPage() {
     }
     setIsSubmittingWork(true)
     try {
-      const uploadedFiles: { url: string; name: string; size: number; type: string }[] = []
-      for (const file of workFiles) {
+      const uploadedFiles: WorkSubmissionFile[] = []
+      for (let i = 0; i < workFiles.length; i++) {
+        const file = workFiles[i]
+        setUploadProgress({ current: i + 1, total: workFiles.length, fileName: file.name, phase: 'uploading' })
         const formData = new FormData()
         formData.append('file', file)
         formData.append('bucket', 'deliverables')
         const uploadResponse = await fetch('/api/upload', { method: 'POST', body: formData })
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json()
-          uploadedFiles.push({ url: uploadData.url, name: file.name, size: file.size, type: file.type })
+          uploadedFiles.push({
+            url: uploadData.url,
+            path: uploadData.path,
+            bucket: uploadData.bucket,
+            protected: uploadData.protected,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          })
         } else {
-          toast.error(`Failed to upload ${file.name}`)
+          const errData = await uploadResponse.json().catch(() => null)
+          toast.error(errData?.error || `Failed to upload ${file.name}`)
           setIsSubmittingWork(false)
+          setUploadProgress(null)
           return
         }
       }
+      setUploadProgress({ current: workFiles.length, total: workFiles.length, fileName: '', phase: 'submitting' })
       const response = await fetch('/api/work-submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,6 +289,7 @@ export default function OpportunityDetailPage() {
       toast.error('Failed to submit work')
     } finally {
       setIsSubmittingWork(false)
+      setUploadProgress(null)
     }
   }
 
@@ -274,6 +302,32 @@ export default function OpportunityDetailPage() {
 
   const removeFile = (index: number) => {
     setWorkFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    const validFiles = droppedFiles.filter(f => f.size <= 50 * 1024 * 1024)
+    if (validFiles.length < droppedFiles.length) toast.error('Some files exceeded 50MB limit and were excluded')
+    setWorkFiles(prev => [...prev, ...validFiles].slice(0, 10))
+  }
+
+  const getFileTypeBadge = (file: File) => {
+    const t = file.type
+    if (t.startsWith('image/')) return { label: 'Image', color: 'bg-blue-500/10 text-blue-500 border-blue-500/30' }
+    if (t.startsWith('video/')) return { label: 'Video', color: 'bg-purple-500/10 text-purple-500 border-purple-500/30' }
+    if (t.startsWith('audio/')) return { label: 'Audio', color: 'bg-pink-500/10 text-pink-500 border-pink-500/30' }
+    if (t === 'application/pdf') return { label: 'PDF', color: 'bg-red-500/10 text-red-500 border-red-500/30' }
+    if (t.includes('zip') || t.includes('rar') || t.includes('compressed')) return { label: 'Archive', color: 'bg-orange-500/10 text-orange-500 border-orange-500/30' }
+    return { label: 'File', color: 'bg-muted text-muted-foreground border-border' }
+  }
+
+  const getFileThumbnail = (file: File): string | null => {
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      return URL.createObjectURL(file)
+    }
+    return null
   }
 
   const handleApply = async () => {
@@ -466,9 +520,9 @@ export default function OpportunityDetailPage() {
               </div>
               <div>
                 <p className="text-lg font-bold text-brand-purple-600 dark:text-brand-400" style={{ textShadow: '0 0 15px rgba(249,115,22,0.2)' }}>
-                  ${opportunity.budgetMin.toLocaleString()}
+                  {opportunity.currency || 'SLE'} {opportunity.budgetMin.toLocaleString()}
                   {opportunity.budgetMax !== opportunity.budgetMin && (
-                    <span className="text-sm"> - ${opportunity.budgetMax.toLocaleString()}</span>
+                    <span className="text-sm"> - {opportunity.currency || 'SLE'} {opportunity.budgetMax.toLocaleString()}</span>
                   )}
                 </p>
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">{opportunity.currency}</p>
@@ -633,24 +687,70 @@ export default function OpportunityDetailPage() {
                         <p className="text-xs text-muted-foreground mt-1">Submit your completed work below</p>
                       </div>
 
-                      {/* Latest submission */}
-                      {submissions.length > 0 && (
-                        <div className="p-4 rounded-xl bg-muted/50 border border-border/40 space-y-2">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Latest Submission</p>
-                          <div className="flex items-center justify-between">
-                            {(() => {
-                              const sc = getSubmissionStatusColor(submissions[0].status)
-                              return <Badge className={cn(sc.bgLight, sc.text, sc.border, 'text-[10px]')}>{submissions[0].status.replace('_', ' ')}</Badge>
-                            })()}
-                            <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(submissions[0].created_at)}</span>
+                      {/* Journey Stepper */}
+                      {submissions.length > 0 && (() => {
+                        const latest = submissions[0]
+                        const steps = [
+                          { key: 'submitted', label: 'Submitted' },
+                          { key: 'under_review', label: 'Under Review' },
+                          { key: 'decision', label: latest.status === 'revision_requested' ? 'Revision Requested' : latest.status === 'approved' ? 'Approved' : 'Pending Decision' },
+                          { key: 'payment', label: 'Payment' },
+                          { key: 'complete', label: 'Complete' },
+                        ]
+                        const currentStep = latest.status === 'submitted' ? 1
+                          : latest.status === 'revision_requested' ? 2
+                          : latest.status === 'approved' ? 5
+                          : latest.status === 'payment_pending' ? 3
+                          : 0
+
+                        return (
+                          <div className="p-4 rounded-xl bg-muted/50 border border-border/40 space-y-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Submission Progress</p>
+                            <div className="flex items-center justify-between gap-1">
+                              {steps.map((step, idx) => {
+                                const isPast = idx < currentStep
+                                const isCurrent = idx === currentStep
+                                return (
+                                  <div key={step.key} className="flex items-center flex-1 min-w-0">
+                                    <div className="flex flex-col items-center gap-1">
+                                      <motion.div
+                                        className={cn(
+                                          'w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold border-2 transition-colors',
+                                          isPast ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                          isCurrent ? 'bg-brand-500 border-brand-500 text-brand-dark' :
+                                          'bg-muted border-border text-muted-foreground'
+                                        )}
+                                        animate={isCurrent ? { boxShadow: ['0 0 0 0 rgba(254,199,20,0.3)', '0 0 0 6px rgba(254,199,20,0)', '0 0 0 0 rgba(254,199,20,0.3)'] } : {}}
+                                        transition={isCurrent ? { duration: 2, repeat: Infinity } : {}}
+                                      >
+                                        {isPast ? '✓' : idx + 1}
+                                      </motion.div>
+                                      <span className={cn('text-[8px] leading-tight text-center max-w-[50px]', isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                                        {step.label}
+                                      </span>
+                                    </div>
+                                    {idx < steps.length - 1 && (
+                                      <div className={cn('flex-1 h-0.5 mx-0.5 mt-[-12px] rounded-full', isPast ? 'bg-emerald-500' : 'bg-border')} />
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Revision feedback callout */}
+                            {latest.status === 'revision_requested' && latest.feedback && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-3 p-3 rounded-lg bg-brand-500/5 border border-brand-500/20"
+                              >
+                                <p className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider mb-1">Employer Feedback</p>
+                                <p className="text-xs text-foreground leading-relaxed">{latest.feedback}</p>
+                              </motion.div>
+                            )}
                           </div>
-                          {submissions[0].feedback && (
-                            <p className="text-xs text-muted-foreground p-2 bg-background rounded-lg border border-border/40">
-                              <span className="font-semibold text-foreground">Feedback:</span> {submissions[0].feedback}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                        )
+                      })()}
 
                       {/* Submit Work Button */}
                       <Dialog open={isSubmitWorkOpen} onOpenChange={setIsSubmitWorkOpen}>
@@ -665,6 +765,39 @@ export default function OpportunityDetailPage() {
                             <DialogTitle>Submit Work</DialogTitle>
                             <DialogDescription>Upload your deliverables and add a message</DialogDescription>
                           </DialogHeader>
+
+                          {/* Upload progress overlay */}
+                          <AnimatePresence>
+                            {uploadProgress && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-background/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 rounded-xl"
+                              >
+                                <HugeiconsIcon icon={Loading02Icon} className="w-10 h-10 text-brand-500 animate-spin mb-4" />
+                                <p className="text-sm font-semibold text-foreground mb-1">
+                                  {uploadProgress.phase === 'uploading'
+                                    ? `Uploading files (${uploadProgress.current}/${uploadProgress.total})...`
+                                    : 'Submitting work...'}
+                                </p>
+                                {uploadProgress.phase === 'uploading' && (
+                                  <>
+                                    <p className="text-xs text-muted-foreground mb-3 truncate max-w-[250px]">{uploadProgress.fileName}</p>
+                                    <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full overflow-hidden">
+                                      <motion.div
+                                        className="h-full bg-brand-500 rounded-full"
+                                        initial={{ width: '0%' }}
+                                        animate={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                                        transition={{ duration: 0.3 }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
                           <div className="space-y-4 mt-4">
                             <div className="space-y-2">
                               <Label htmlFor="work-message">Message <span className="text-red-500">*</span></Label>
@@ -679,32 +812,73 @@ export default function OpportunityDetailPage() {
                             </div>
                             <div className="space-y-2">
                               <Label>Deliverable Files</Label>
-                              <div className="border-2 border-dashed border-brand-purple-500/30 dark:border-brand-purple-500/30 dark:border-brand-500/30 hover:border-brand-500/60 rounded-xl p-5 text-center transition-colors">
-                                <HugeiconsIcon icon={Upload01Icon} className="w-8 h-8 text-brand-purple-400 dark:text-brand-400/60 mx-auto mb-2" />
-                                <p className="text-sm text-muted-foreground mb-2">Upload files (images, PDFs, ZIPs, etc.)</p>
+                              <div
+                                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                                onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                                onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false) }}
+                                onDrop={handleDrop}
+                                className={cn(
+                                  'border-2 border-dashed rounded-xl p-5 text-center transition-all duration-200 relative',
+                                  isDragOver
+                                    ? 'border-brand-500 bg-brand-500/5 scale-[1.02] shadow-lg shadow-brand-500/10'
+                                    : 'border-brand-purple-500/30 dark:border-brand-500/30 hover:border-brand-500/60'
+                                )}
+                              >
+                                <motion.div animate={isDragOver ? { scale: 1.15 } : { scale: 1 }} transition={{ duration: 0.2 }}>
+                                  <HugeiconsIcon icon={Upload01Icon} className={cn('w-8 h-8 mx-auto mb-2 transition-colors', isDragOver ? 'text-brand-500' : 'text-brand-purple-400 dark:text-brand-400/60')} />
+                                </motion.div>
+                                <p className="text-sm text-muted-foreground mb-1">
+                                  {isDragOver ? 'Drop files here!' : 'Drag & drop or browse files'}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mb-2">Images, videos, audio, PDFs, archives — max 10 files, 50MB each</p>
                                 <Input
                                   type="file"
                                   multiple
                                   onChange={handleFileChange}
                                   className="max-w-[200px] mx-auto"
-                                  accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.zip,.rar,.psd,.ai,.svg,.mp4,.mov,.fig,.sketch"
+                                  accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.zip,.rar,.psd,.ai,.svg,.mp4,.mov,.mp3,.wav,.aac,.fig,.sketch"
                                 />
-                                <p className="text-[10px] text-muted-foreground mt-2">Max 10 files, 50MB each</p>
                               </div>
                               {workFiles.length > 0 && (
-                                <div className="space-y-1.5 mt-2">
-                                  {workFiles.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <HugeiconsIcon icon={FileAttachmentIcon} className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                        <span className="text-xs truncate">{file.name}</span>
-                                        <span className="text-[10px] text-muted-foreground flex-shrink-0">({(file.size / 1024 / 1024).toFixed(1)}MB)</span>
-                                      </div>
-                                      <button onClick={() => removeFile(index)} className="text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0">
-                                        <HugeiconsIcon icon={Cancel01Icon} className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  ))}
+                                <div className="space-y-1.5 mt-3">
+                                  <p className="text-[10px] text-muted-foreground font-medium">{workFiles.length} file{workFiles.length > 1 ? 's' : ''} selected</p>
+                                  {workFiles.map((file, index) => {
+                                    const badge = getFileTypeBadge(file)
+                                    const thumb = getFileThumbnail(file)
+                                    return (
+                                      <motion.div
+                                        key={`${file.name}-${index}`}
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        className="flex items-center gap-2.5 p-2 bg-muted/50 rounded-lg group"
+                                      >
+                                        {thumb ? (
+                                          <div className="w-9 h-9 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                                            {file.type.startsWith('video/') ? (
+                                              <video src={thumb} className="w-full h-full object-cover" muted />
+                                            ) : (
+                                              <img src={thumb} alt="" className="w-full h-full object-cover" />
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                                            <HugeiconsIcon icon={FileAttachmentIcon} className="w-4 h-4 text-muted-foreground" />
+                                          </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs truncate font-medium text-foreground">{file.name}</p>
+                                          <p className="text-[10px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)}MB</p>
+                                        </div>
+                                        <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 flex-shrink-0', badge.color)}>
+                                          {badge.label}
+                                        </Badge>
+                                        <button onClick={() => removeFile(index)} className="text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100">
+                                          <HugeiconsIcon icon={Cancel01Icon} className="w-3.5 h-3.5" />
+                                        </button>
+                                      </motion.div>
+                                    )
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -730,17 +904,35 @@ export default function OpportunityDetailPage() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Submission History</p>
                           {submissions.map((sub, i) => {
                             const sc = getSubmissionStatusColor(sub.status)
+                            const isLatest = i === 0
                             return (
-                              <div key={sub.id} className="flex gap-3">
+                              <motion.div
+                                key={sub.id}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                className="flex gap-3"
+                              >
                                 <div className="flex flex-col items-center">
-                                  <div className={cn('w-3 h-3 rounded-full ring-2 flex-shrink-0', sc.dot, sc.ring)} />
+                                  <motion.div
+                                    className={cn('w-3 h-3 rounded-full ring-2 flex-shrink-0', sc.dot, sc.ring)}
+                                    animate={isLatest && sub.status === 'submitted' ? { scale: [1, 1.3, 1] } : {}}
+                                    transition={isLatest ? { duration: 2, repeat: Infinity } : {}}
+                                  />
                                   {i < submissions.length - 1 && <div className="w-px flex-1 bg-border/50 my-1" />}
                                 </div>
                                 <div className="pb-4 min-w-0 flex-1">
                                   <div className="flex items-center justify-between gap-2">
-                                    <Badge className={cn(sc.bgLight, sc.text, sc.border, 'text-[9px] capitalize')}>
-                                      {sub.status.replace('_', ' ')}
-                                    </Badge>
+                                    <div className="flex items-center gap-1.5">
+                                      <Badge className={cn(sc.bgLight, sc.text, sc.border, 'text-[9px] capitalize')}>
+                                        {sub.status.replace('_', ' ')}
+                                      </Badge>
+                                      {sub.status === 'approved' && (
+                                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[9px]">
+                                          Paid
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <span className="text-[10px] text-muted-foreground flex-shrink-0">{formatDistanceToNow(sub.created_at)}</span>
                                   </div>
                                   {sub.message && (
@@ -752,8 +944,14 @@ export default function OpportunityDetailPage() {
                                       {sub.files.length} file{sub.files.length > 1 ? 's' : ''}
                                     </p>
                                   )}
+                                  {sub.feedback && sub.status === 'revision_requested' && (
+                                    <div className="mt-2 p-2 rounded-md bg-brand-500/5 border border-brand-500/15">
+                                      <p className="text-[10px] font-bold text-brand-600 dark:text-brand-400 mb-0.5">Feedback</p>
+                                      <p className="text-[11px] text-foreground leading-relaxed">{sub.feedback}</p>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
+                              </motion.div>
                             )
                           })}
                         </div>

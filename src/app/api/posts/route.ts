@@ -61,26 +61,48 @@ export async function GET(request: NextRequest) {
       ? (items[items.length - 1] as { created_at: string }).created_at
       : null
 
-    // If user is authenticated, check which posts they've liked
-    let userLikes: Set<string> = new Set()
-    if (userId && items.length > 0) {
-      const postIds = items.map((p: any) => p.id)
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('post_id')
-        .eq('user_id', userId)
+    const postIds = items.map((p: any) => p.id)
+    const reactionDefaults = { like: 0, smile: 0, angry: 0, excited: 0 }
+    const reactionCountsByPost = new Map<string, { like: number; smile: number; angry: number; excited: number }>()
+    const myReactionByPost = new Map<string, string | null>()
+
+    if (postIds.length > 0) {
+      const { data: reactions, error: reactionsError } = await supabase
+        .from('post_reactions')
+        .select('post_id, user_id, reaction_type')
         .in('post_id', postIds)
 
-      if (likes) {
-        userLikes = new Set(likes.map((l: any) => l.post_id))
+      // Backward-safe fallback if migration has not run yet.
+      if (!reactionsError && reactions) {
+        for (const row of reactions) {
+          const current = reactionCountsByPost.get(row.post_id) || { ...reactionDefaults }
+          if (row.reaction_type in current) {
+            current[row.reaction_type as keyof typeof current] += 1
+          }
+          reactionCountsByPost.set(row.post_id, current)
+
+          if (userId && row.user_id === userId) {
+            myReactionByPost.set(row.post_id, row.reaction_type)
+          }
+        }
+      } else if (reactionsError) {
+        console.warn('post_reactions unavailable, falling back to legacy likes_count:', reactionsError.message)
       }
     }
 
-    // Add hasLiked to each post
-    const postsWithLikeStatus = items.map((post: any) => ({
-      ...post,
-      hasLiked: userLikes.has(post.id),
-    }))
+    // Add reaction metadata while preserving legacy fields for compatibility.
+    const postsWithLikeStatus = items.map((post: any) => {
+      const reactionCounts = reactionCountsByPost.get(post.id) || { ...reactionDefaults }
+      const myReaction = myReactionByPost.get(post.id) || null
+
+      return {
+        ...post,
+        likes_count: reactionCounts.like || post.likes_count || 0,
+        hasLiked: myReaction === 'like',
+        myReaction,
+        reactionCounts,
+      }
+    })
 
     return privateCachedJson({ posts: postsWithLikeStatus, nextCursor })
   } catch (error) {
@@ -102,14 +124,42 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { content, images, video_url } = body
+    const rawContent = typeof body?.content === 'string' ? body.content : ''
+    const content = rawContent.trim()
+    const rawImages = body?.images
+    const rawVideoUrl = body?.video_url
 
-    if (!content || content.trim().length === 0) {
-      return NextResponse.json({ error: 'Content is required' }, { status: 400 })
+    if (rawImages !== undefined && !Array.isArray(rawImages)) {
+      return NextResponse.json({ error: 'Images must be an array of URLs' }, { status: 400 })
+    }
+
+    if (rawVideoUrl !== undefined && rawVideoUrl !== null && typeof rawVideoUrl !== 'string') {
+      return NextResponse.json({ error: 'Video URL must be a string' }, { status: 400 })
+    }
+
+    const images = (rawImages || [])
+      .filter((url: unknown) => typeof url === 'string')
+      .map((url: string) => url.trim())
+      .filter(Boolean)
+
+    if ((rawImages || []).length !== images.length) {
+      return NextResponse.json({ error: 'Images contain invalid URLs' }, { status: 400 })
+    }
+
+    const video_url = typeof rawVideoUrl === 'string' && rawVideoUrl.trim().length > 0
+      ? rawVideoUrl.trim()
+      : null
+
+    if (!content && images.length === 0 && !video_url) {
+      return NextResponse.json({ error: 'Post requires write-up or media' }, { status: 400 })
     }
 
     if (content.length > 1000) {
       return NextResponse.json({ error: 'Content must be under 1000 characters' }, { status: 400 })
+    }
+
+    if (images.length > 4) {
+      return NextResponse.json({ error: 'Maximum 4 images per post' }, { status: 400 })
     }
 
     const supabase = await createServerClient()
@@ -118,9 +168,9 @@ export async function POST(request: NextRequest) {
       .from('posts')
       .insert({
         user_id: userId,
-        content: content.trim(),
-        images: images || [],
-        video_url: video_url || null,
+        content,
+        images,
+        video_url,
         likes_count: 0,
         comments_count: 0,
       })

@@ -28,6 +28,9 @@ export const translations = {
       villagSquare: 'Village Square',
       scoutTalents: 'Scout Talents',
       pitchStage: 'Pitch Stage',
+      deliverables: 'Deliverables',
+      payments: 'Payments',
+      earnings: 'Earnings',
     },
 
     // Profile page
@@ -171,6 +174,9 @@ export const translations = {
       villagSquare: 'Vilej Skwɛa',
       scoutTalents: 'Skawt Talent Dɛm',
       pitchStage: 'Pitch Stej',
+      deliverables: 'Dɛlivabol Dɛm',
+      payments: 'Pemɛnt Dɛm',
+      earnings: 'Ɛnin Dɛm',
     },
 
     // Profile page

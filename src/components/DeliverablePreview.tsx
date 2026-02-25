@@ -23,6 +23,8 @@ interface DeliverablePreviewProps {
   className?: string
 }
 
+type PreviewType = 'image' | 'video' | 'audio' | null
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -40,12 +42,17 @@ function getFileIcon(type: string): string {
   return '📎'
 }
 
+function isPreviewable(type: string): boolean {
+  return type.startsWith('image/') || type.startsWith('video/') || type.startsWith('audio/')
+}
+
 export default function DeliverablePreview({ files, submissionId, filesReleased, className }: DeliverablePreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<PreviewType>(null)
   const [previewLoading, setPreviewLoading] = useState<string | null>(null)
 
   const handlePreview = async (file: DeliverableFile, index: number) => {
-    if (!file.path || !file.type.startsWith('image/')) return
+    if (!file.path || !isPreviewable(file.type)) return
 
     setPreviewLoading(file.name)
     try {
@@ -61,6 +68,7 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
         const data = await res.json()
         if (data.preview_url) {
           setPreviewUrl(data.preview_url)
+          setPreviewType(data.preview_type as PreviewType)
         }
       }
     } catch {
@@ -68,6 +76,11 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
     } finally {
       setPreviewLoading(null)
     }
+  }
+
+  const closePreview = () => {
+    setPreviewUrl(null)
+    setPreviewType(null)
   }
 
   const getDownloadUrl = (file: DeliverableFile, index: number) => {
@@ -81,8 +94,8 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
     <div className={cn('space-y-2', className)}>
       {files.map((file, idx) => {
         const isProtected = file.protected || file.bucket === 'deliverables-protected'
-        const isImage = file.type?.startsWith('image/')
         const canDownload = filesReleased || !isProtected
+        const canPreview = isProtected && !filesReleased && isPreviewable(file.type)
 
         return (
           <div
@@ -114,7 +127,7 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0">
-              {isImage && isProtected && !filesReleased && (
+              {canPreview && (
                 <button
                   onClick={() => handlePreview(file, idx)}
                   className="p-1.5 rounded-md hover:bg-muted transition-colors"
@@ -138,7 +151,7 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
                   <HugeiconsIcon icon={Download01Icon} className="w-3.5 h-3.5 text-emerald-500" />
                 </a>
               )}
-              {!canDownload && !isImage && (
+              {!canDownload && !isPreviewable(file.type) && (
                 <svg className="w-3.5 h-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -148,38 +161,118 @@ export default function DeliverablePreview({ files, submissionId, filesReleased,
         )
       })}
 
-      {/* Image preview modal */}
-      {previewUrl && (
+      {/* Preview modal for images and video */}
+      {previewUrl && (previewType === 'image' || previewType === 'video') && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={() => setPreviewUrl(null)}
+          onClick={closePreview}
         >
-          <div className="relative max-w-2xl max-h-[80vh] p-1" onClick={e => e.stopPropagation()}>
-            <div className="absolute top-2 right-2 z-10">
+          <div className="relative max-w-3xl w-full max-h-[85vh] mx-4" onClick={e => e.stopPropagation()}>
+            <div className="absolute -top-10 right-0 z-10">
               <button
-                onClick={() => setPreviewUrl(null)}
-                className="p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                onClick={closePreview}
+                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+
+            <div className="relative rounded-xl overflow-hidden bg-black">
+              {previewType === 'image' && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="w-full max-h-[80vh] object-contain"
+                    onContextMenu={e => e.preventDefault()}
+                    draggable={false}
+                  />
+                  {!filesReleased && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <p className="text-white/20 text-4xl font-bold rotate-[-30deg] select-none">
+                        PREVIEW &mdash; CREATUNO
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {previewType === 'video' && (
+                <>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={previewUrl}
+                    controls
+                    controlsList="nodownload noremoteplayback"
+                    disablePictureInPicture
+                    playsInline
+                    className="w-full max-h-[80vh]"
+                    onContextMenu={e => e.preventDefault()}
+                  />
+                  {!filesReleased && (
+                    <div className="absolute top-3 left-3 pointer-events-none">
+                      <span className="px-2 py-1 rounded bg-black/50 text-white/40 text-xs font-bold select-none">
+                        PREVIEW &mdash; CREATUNO
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {!filesReleased && (
+              <p className="text-center text-white/50 text-xs mt-3 select-none">
+                Preview only &mdash; pay to download the original file
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Audio preview modal */}
+      {previewUrl && previewType === 'audio' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={closePreview}
+        >
+          <div className="relative w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="rounded-2xl bg-card border border-border/50 p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand-purple-500/10 flex items-center justify-center">
+                    <span className="text-lg">🎵</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Audio Preview</p>
+                    {!filesReleased && (
+                      <p className="text-[10px] text-orange-500 font-medium">PREVIEW ONLY</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={closePreview}
+                  className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <audio
                 src={previewUrl}
-                alt="Preview"
-                className="rounded-lg max-h-[80vh] object-contain"
+                controls
+                controlsList="nodownload"
+                className="w-full"
                 onContextMenu={e => e.preventDefault()}
-                draggable={false}
               />
               {!filesReleased && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <p className="text-white/20 text-4xl font-bold rotate-[-30deg] select-none">
-                    PREVIEW — CREATUNO
-                  </p>
-                </div>
+                <p className="text-center text-muted-foreground text-[10px] mt-3 select-none">
+                  Preview only &mdash; pay to download the original file
+                </p>
               )}
             </div>
           </div>

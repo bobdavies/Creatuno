@@ -48,6 +48,26 @@ interface Opportunity {
   createdAt: string
 }
 
+interface Investment {
+  id: string
+  pitch_id: string
+  amount: number
+  currency: string
+  net_payout_amount: number
+  status: string
+  payout_status: string
+  created_at: string
+  pitch: { title: string; category: string | null; status: string } | null
+  recipient: { full_name: string; avatar_url: string | null; role: string } | null
+}
+
+interface InvestmentStats {
+  total_invested: number
+  total_pending: number
+  count: number
+  funded_count: number
+}
+
 export default function InvestorDashboardPage() {
   const { userId, role, isLoading: sessionLoading } = useSession()
   
@@ -59,6 +79,8 @@ export default function InvestorDashboardPage() {
   const [livePitches, setLivePitches] = useState<any[]>([])
   const [myInterests, setMyInterests] = useState<any[]>([])
   const [pitchCount, setPitchCount] = useState(0)
+  const [investments, setInvestments] = useState<Investment[]>([])
+  const [investStats, setInvestStats] = useState<InvestmentStats>({ total_invested: 0, total_pending: 0, count: 0, funded_count: 0 })
 
   useEffect(() => {
     if (userId && role === 'investor') {
@@ -69,11 +91,12 @@ export default function InvestorDashboardPage() {
   const loadInvestorData = async () => {
     setIsLoading(true)
     try {
-      const [bookmarksRes, oppsRes, messagesRes, pitchesRes] = await Promise.all([
+      const [bookmarksRes, oppsRes, messagesRes, pitchesRes, investmentsRes] = await Promise.all([
         fetch('/api/bookmarks').then(r => r.ok ? r.json() : { bookmarks: [] }).catch(() => ({ bookmarks: [] })),
         fetch('/api/opportunities?type=investment').then(r => r.ok ? r.json() : { opportunities: [] }).catch(() => ({ opportunities: [] })),
         fetch('/api/messages?count_only=true').then(r => r.ok ? r.json() : { count: 0 }).catch(() => ({ count: 0 })),
         fetch('/api/pitches?status=live&limit=5').then(r => r.ok ? r.json() : { pitches: [] }).catch(() => ({ pitches: [] })),
+        fetch('/api/payments/investment-history').then(r => r.ok ? r.json() : { investments: [], stats: {} }).catch(() => ({ investments: [], stats: {} })),
       ])
 
       setBookmarks(bookmarksRes.bookmarks || [])
@@ -81,6 +104,8 @@ export default function InvestorDashboardPage() {
       setMessageCount(messagesRes.count || 0)
       setLivePitches(pitchesRes.pitches || [])
       setPitchCount(pitchesRes.pitches?.length || 0)
+      setInvestments(investmentsRes.investments || [])
+      setInvestStats(investmentsRes.stats || { total_invested: 0, total_pending: 0, count: 0, funded_count: 0 })
     } catch (error) {
       console.error('Error loading investor data:', error)
     } finally {
@@ -157,12 +182,12 @@ export default function InvestorDashboardPage() {
         <SpotlightCard>
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <HugeiconsIcon icon={BookmarkCheck01Icon} className="w-8 h-8 text-brand-600 dark:text-brand-400" />
+              <MdAttachMoney className="w-8 h-8 text-green-500" />
               <div>
                 <p className="text-xl sm:text-2xl font-bold text-foreground">
-                  {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : bookmarks.length}
+                  {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : `Le ${investStats.total_invested.toLocaleString()}`}
                 </p>
-                <p className="text-xs text-muted-foreground">Saved Portfolios</p>
+                <p className="text-xs text-muted-foreground">Total Invested</p>
               </div>
             </div>
           </div>
@@ -170,12 +195,12 @@ export default function InvestorDashboardPage() {
         <SpotlightCard>
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <HugeiconsIcon icon={Message01Icon} className="w-8 h-8 text-brand-purple-600 dark:text-brand-400" />
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-8 h-8 text-emerald-500" />
               <div>
                 <p className="text-xl sm:text-2xl font-bold text-foreground">
-                  {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : messageCount}
+                  {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : investStats.funded_count}
                 </p>
-                <p className="text-xs text-muted-foreground">Messages Sent</p>
+                <p className="text-xs text-muted-foreground">Pitches Funded</p>
               </div>
             </div>
           </div>
@@ -183,7 +208,7 @@ export default function InvestorDashboardPage() {
         <SpotlightCard>
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <HugeiconsIcon icon={Briefcase01Icon} className="w-8 h-8 text-green-500" />
+              <HugeiconsIcon icon={Briefcase01Icon} className="w-8 h-8 text-brand-purple-600 dark:text-brand-400" />
               <div>
                 <p className="text-xl sm:text-2xl font-bold text-foreground">
                   {isLoading ? <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin" /> : investmentOpps.length}
@@ -237,11 +262,20 @@ export default function InvestorDashboardPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="pitches" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+      <Tabs defaultValue="investments" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsTrigger value="investments" className="flex items-center gap-2">
+            <MdAttachMoney className="w-4 h-4" />
+            My Investments
+            {investStats.count > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-green-500 text-white">
+                {investStats.count}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="pitches" className="flex items-center gap-2">
             <HugeiconsIcon icon={SparklesIcon} className="w-4 h-4" />
-            Pitch Stage
+            Pitches
             {pitchCount > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-brand-500 text-brand-dark">
                 {pitchCount}
@@ -251,17 +285,73 @@ export default function InvestorDashboardPage() {
           <TabsTrigger value="saved" className="flex items-center gap-2">
             <HugeiconsIcon icon={Bookmark01Icon} className="w-4 h-4" />
             Saved
-            {bookmarks.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 bg-brand-500 text-brand-dark">
-                {bookmarks.length}
-              </Badge>
-            )}
           </TabsTrigger>
           <TabsTrigger value="opportunities" className="flex items-center gap-2">
             <HugeiconsIcon icon={Briefcase01Icon} className="w-4 h-4" />
-            Investments
+            Opps
           </TabsTrigger>
         </TabsList>
+
+        {/* My Investments Tab */}
+        <TabsContent value="investments">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <HugeiconsIcon icon={Loading02Icon} className="w-8 h-8 animate-spin text-brand-purple-600 dark:text-brand-400" />
+            </div>
+          ) : investments.length > 0 ? (
+            <div className="space-y-3">
+              {investments.map((inv) => {
+                const statusCfg: Record<string, { label: string; color: string; bg: string }> = {
+                  awaiting_payment: { label: 'Pending', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
+                  payment_received: { label: 'Paid', color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                  payout_initiated: { label: 'Payout Sent', color: 'text-brand-purple-600 dark:text-brand-400', bg: 'bg-brand-purple-500/10 border-brand-purple-500/20' },
+                  completed: { label: 'Completed', color: 'text-emerald-600', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                  failed: { label: 'Failed', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' },
+                }
+                const cfg = statusCfg[inv.status] || { label: inv.status, color: 'text-muted-foreground', bg: 'bg-muted border-border' }
+                const date = new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+                return (
+                  <SpotlightCard key={inv.id}>
+                    <Link href={`/pitch-stage/${inv.pitch_id}`} className="block p-4 sm:p-5">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="w-10 h-10 flex-shrink-0">
+                          <AvatarImage src={inv.recipient?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-green-500/10 text-green-600 text-xs font-bold">
+                            {inv.recipient?.full_name?.charAt(0) || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{inv.pitch?.title || 'Unknown Pitch'}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            to {inv.recipient?.full_name || 'Unknown'} ({inv.recipient?.role}) &middot; {date}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-foreground">{inv.currency || 'SLE'} {inv.amount?.toLocaleString()}</p>
+                          <Badge variant="outline" className={cn('text-[10px] mt-1', cfg.bg, cfg.color)}>
+                            {cfg.label}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Link>
+                  </SpotlightCard>
+                )
+              })}
+            </div>
+          ) : (
+            <SpotlightCard>
+              <div className="p-8 text-center">
+                <MdAttachMoney className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground mb-1">No investments yet</p>
+                <p className="text-xs text-muted-foreground mb-4">Browse pitches and fund creative talent to see your investments here</p>
+                <Button variant="outline" asChild className="rounded-full">
+                  <Link href="/pitch-stage">Browse Pitches</Link>
+                </Button>
+              </div>
+            </SpotlightCard>
+          )}
+        </TabsContent>
 
         {/* Pitch Stage Tab */}
         <TabsContent value="pitches">
@@ -296,7 +386,7 @@ export default function InvestorDashboardPage() {
                           <span>{pitch.creative?.full_name}</span>
                           {pitch.funding_ask && (
                             <span className="font-medium text-brand-600 dark:text-brand-400">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: pitch.currency || 'USD', maximumFractionDigits: 0 }).format(pitch.funding_ask)}
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: pitch.currency || 'SLE', maximumFractionDigits: 0 }).format(pitch.funding_ask)}
                             </span>
                           )}
                           <span className="flex items-center gap-0.5">

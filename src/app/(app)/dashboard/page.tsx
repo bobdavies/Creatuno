@@ -313,11 +313,11 @@ export default function DashboardPage() {
           <SpotlightCard className="overflow-hidden">
           <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
             {[
-              { label: 'Portfolio Views', micro: 'TOTAL', value: viewsCount, format: (v: number) => v.toLocaleString() },
-              { label: 'Active Applications', micro: 'ACTIVE', value: appsCount, format: (v: number) => String(v) },
-              { label: 'Total Earnings', micro: 'LIFETIME', value: earningsCount, format: (v: number) => `$${v.toLocaleString()}` },
+              { label: 'Portfolio Views', micro: 'TOTAL', value: viewsCount, format: (v: number) => v.toLocaleString(), href: '/dashboard/portfolios' },
+              { label: 'Active Applications', micro: 'ACTIVE', value: appsCount, format: (v: number) => String(v), href: '/dashboard/applications' },
+              { label: 'Total Earnings', micro: 'LIFETIME', value: earningsCount, format: (v: number) => `Le ${v.toLocaleString()}`, href: '/dashboard/earnings' },
             ].map((stat) => (
-              <div key={stat.label} className="p-4 sm:p-6 text-center">
+              <Link key={stat.label} href={stat.href} className="p-4 sm:p-6 text-center hover:bg-muted/30 transition-colors">
                 {isLoadingStats ? (
                   <HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin text-brand-purple-600 dark:text-brand-400 mx-auto" />
                 ) : (
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                 <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium">
                   {stat.label}
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
           </SpotlightCard>
@@ -351,10 +351,11 @@ export default function DashboardPage() {
         >
           {[
             { label: 'New Portfolio', href: '/dashboard/portfolios/new', icon: Add01Icon },
+            { label: 'Earnings', href: '/dashboard/earnings', icon: AnalyticsUpIcon },
             { label: 'Find Work', href: '/opportunities', icon: Briefcase01Icon, count: opportunities.length > 0 ? opportunities.length : undefined },
             { label: 'Pitch Stage', href: '/pitch-stage', icon: SparklesIcon },
             { label: 'Find Mentor', href: '/mentorship', icon: UserGroupIcon },
-            { label: 'Village Square', href: '/feed', icon: AnalyticsUpIcon },
+            { label: 'Village Square', href: '/feed', icon: ArrowRight01Icon },
           ].map((action) => (
             <motion.div key={action.label} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }} className="snap-start">
               <Link

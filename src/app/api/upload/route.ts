@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
     return NextResponse.json({ error: 'Storage not configured' }, { status: 503 })
@@ -84,6 +87,37 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
+    // Ensure the posts bucket exists so feed media URLs remain publicly accessible.
+    if (isPosts) {
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+      if (listError) {
+        console.error('Failed to list storage buckets:', listError)
+        return NextResponse.json({ error: 'Storage is unavailable for post uploads' }, { status: 500 })
+      }
+      if (!buckets?.some(b => b.id === 'posts')) {
+        return NextResponse.json(
+          { error: 'Posts storage bucket is missing. Apply migration 005_posts_bucket.sql.' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Ensure the deliverables bucket exists (auto-create if missing)
+    if (isDeliverables) {
+      const { data: buckets } = await supabase.storage.listBuckets()
+      if (!buckets?.some(b => b.id === actualBucket)) {
+        const { error: createError } = await supabase.storage.createBucket(actualBucket, {
+          public: false,
+          fileSizeLimit: 52428800,
+          allowedMimeTypes: [...deliverableTypes, ...audioTypes],
+        })
+        if (createError && !createError.message?.includes('already exists')) {
+          console.error('Failed to create deliverables bucket:', createError)
+          return NextResponse.json({ error: 'Storage bucket not available' }, { status: 500 })
+        }
+      }
+    }
+
     // Generate unique filename
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(2, 8)
@@ -104,8 +138,11 @@ export async function POST(request: NextRequest) {
       })
 
     if (error) {
-      console.error('Upload error:', error)
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+      console.error('Upload error:', error.message, error)
+      return NextResponse.json(
+        { error: `Failed to upload file: ${error.message}` },
+        { status: 500 },
+      )
     }
 
     if (isDeliverables) {

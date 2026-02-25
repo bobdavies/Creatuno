@@ -29,6 +29,11 @@ export interface Database {
           is_mentor: boolean
           is_available_for_mentorship: boolean
           max_mentees: number
+          payment_provider: string | null
+          payment_provider_id: string | null
+          payment_account: string | null
+          payment_account_verified: boolean
+          payout_mode: 'auto' | 'wallet'
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean
           created_at: string
@@ -47,6 +52,11 @@ export interface Database {
           is_mentor?: boolean
           is_available_for_mentorship?: boolean
           max_mentees?: number
+          payment_provider?: string | null
+          payment_provider_id?: string | null
+          payment_account?: string | null
+          payment_account_verified?: boolean
+          payout_mode?: 'auto' | 'wallet'
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean
           created_at?: string
@@ -65,6 +75,11 @@ export interface Database {
           is_mentor?: boolean
           is_available_for_mentorship?: boolean
           max_mentees?: number
+          payment_provider?: string | null
+          payment_provider_id?: string | null
+          payment_account?: string | null
+          payment_account_verified?: boolean
+          payout_mode?: 'auto' | 'wallet'
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean
           created_at?: string
@@ -239,6 +254,52 @@ export interface Database {
         Update: {
           id?: string
           post_id?: string
+          user_id?: string
+          created_at?: string
+        }
+      }
+      post_reactions: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          reaction_type: 'like' | 'smile' | 'angry' | 'excited'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          reaction_type: 'like' | 'smile' | 'angry' | 'excited'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          reaction_type?: 'like' | 'smile' | 'angry' | 'excited'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      comment_likes: {
+        Row: {
+          id: string
+          comment_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
           user_id?: string
           created_at?: string
         }
@@ -425,14 +486,20 @@ export interface Database {
       transactions: {
         Row: {
           id: string
-          opportunity_id: string
-          application_id: string
+          opportunity_id: string | null
+          application_id: string | null
           payer_id: string
           payee_id: string
           amount: number
           currency: string
           platform_fee: number
           net_amount: number
+          monime_checkout_session_id: string | null
+          monime_payout_id: string | null
+          monime_order_number: string | null
+          payment_type: 'full' | 'partial_50' | 'pitch_investment'
+          escrow_id: string | null
+          pitch_investment_id: string | null
           stripe_payment_intent_id: string | null
           stripe_transfer_id: string | null
           status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'disputed'
@@ -441,14 +508,20 @@ export interface Database {
         }
         Insert: {
           id?: string
-          opportunity_id: string
-          application_id: string
+          opportunity_id?: string | null
+          application_id?: string | null
           payer_id: string
           payee_id: string
           amount: number
           currency?: string
           platform_fee: number
           net_amount: number
+          monime_checkout_session_id?: string | null
+          monime_payout_id?: string | null
+          monime_order_number?: string | null
+          payment_type?: 'full' | 'partial_50' | 'pitch_investment'
+          escrow_id?: string | null
+          pitch_investment_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
           status?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'disputed'
@@ -457,14 +530,20 @@ export interface Database {
         }
         Update: {
           id?: string
-          opportunity_id?: string
-          application_id?: string
+          opportunity_id?: string | null
+          application_id?: string | null
           payer_id?: string
           payee_id?: string
           amount?: number
           currency?: string
           platform_fee?: number
           net_amount?: number
+          monime_checkout_session_id?: string | null
+          monime_payout_id?: string | null
+          monime_order_number?: string | null
+          payment_type?: 'full' | 'partial_50' | 'pitch_investment'
+          escrow_id?: string | null
+          pitch_investment_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
           status?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'disputed'
@@ -594,7 +673,7 @@ export interface Database {
           employer_id: string
           message: string
           files: Json
-          status: 'submitted' | 'revision_requested' | 'approved' | 'superseded'
+          status: 'submitted' | 'revision_requested' | 'approved' | 'superseded' | 'payment_pending'
           feedback: string | null
           revision_count: number
           created_at: string
@@ -608,7 +687,7 @@ export interface Database {
           employer_id: string
           message?: string
           files?: Json
-          status?: 'submitted' | 'revision_requested' | 'approved' | 'superseded'
+          status?: 'submitted' | 'revision_requested' | 'approved' | 'superseded' | 'payment_pending'
           feedback?: string | null
           revision_count?: number
           created_at?: string
@@ -622,9 +701,327 @@ export interface Database {
           employer_id?: string
           message?: string
           files?: Json
-          status?: 'submitted' | 'revision_requested' | 'approved' | 'superseded'
+          status?: 'submitted' | 'revision_requested' | 'approved' | 'superseded' | 'payment_pending'
           feedback?: string | null
           revision_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      pitch_investments: {
+        Row: {
+          id: string
+          pitch_id: string
+          investor_id: string
+          recipient_id: string
+          amount: number
+          currency: string
+          platform_fee: number
+          net_payout_amount: number
+          monime_checkout_session_id: string | null
+          monime_order_number: string | null
+          monime_payout_id: string | null
+          status: 'awaiting_payment' | 'payment_received' | 'payout_initiated' | 'completed' | 'failed'
+          payout_status: 'pending' | 'initiated' | 'completed' | 'failed'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          pitch_id: string
+          investor_id: string
+          recipient_id: string
+          amount: number
+          currency?: string
+          platform_fee?: number
+          net_payout_amount?: number
+          monime_checkout_session_id?: string | null
+          monime_order_number?: string | null
+          monime_payout_id?: string | null
+          status?: 'awaiting_payment' | 'payment_received' | 'payout_initiated' | 'completed' | 'failed'
+          payout_status?: 'pending' | 'initiated' | 'completed' | 'failed'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          pitch_id?: string
+          investor_id?: string
+          recipient_id?: string
+          amount?: number
+          currency?: string
+          platform_fee?: number
+          net_payout_amount?: number
+          monime_checkout_session_id?: string | null
+          monime_order_number?: string | null
+          monime_payout_id?: string | null
+          status?: 'awaiting_payment' | 'payment_received' | 'payout_initiated' | 'completed' | 'failed'
+          payout_status?: 'pending' | 'initiated' | 'completed' | 'failed'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      delivery_escrows: {
+        Row: {
+          id: string
+          submission_id: string
+          application_id: string
+          opportunity_id: string
+          creative_id: string
+          employer_id: string
+          agreed_amount: number
+          payment_amount: number
+          payment_percentage: number
+          currency: string
+          monime_checkout_session_id: string | null
+          monime_order_number: string | null
+          monime_payout_id: string | null
+          platform_fee: number
+          net_payout_amount: number
+          status:
+            | 'awaiting_review'
+            | 'review_approved'
+            | 'awaiting_payment'
+            | 'payment_received'
+            | 'payout_initiated'
+            | 'completed'
+            | 'revision_exhausted_awaiting_payment'
+            | 'partial_payment_received'
+            | 'partial_payout_completed'
+          files_released: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          submission_id: string
+          application_id: string
+          opportunity_id: string
+          creative_id: string
+          employer_id: string
+          agreed_amount: number
+          payment_amount: number
+          payment_percentage?: number
+          currency?: string
+          monime_checkout_session_id?: string | null
+          monime_order_number?: string | null
+          monime_payout_id?: string | null
+          platform_fee?: number
+          net_payout_amount?: number
+          status?:
+            | 'awaiting_review'
+            | 'review_approved'
+            | 'awaiting_payment'
+            | 'payment_received'
+            | 'payout_initiated'
+            | 'completed'
+            | 'revision_exhausted_awaiting_payment'
+            | 'partial_payment_received'
+            | 'partial_payout_completed'
+          files_released?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          submission_id?: string
+          application_id?: string
+          opportunity_id?: string
+          creative_id?: string
+          employer_id?: string
+          agreed_amount?: number
+          payment_amount?: number
+          payment_percentage?: number
+          currency?: string
+          monime_checkout_session_id?: string | null
+          monime_order_number?: string | null
+          monime_payout_id?: string | null
+          platform_fee?: number
+          net_payout_amount?: number
+          status?:
+            | 'awaiting_review'
+            | 'review_approved'
+            | 'awaiting_payment'
+            | 'payment_received'
+            | 'payout_initiated'
+            | 'completed'
+            | 'revision_exhausted_awaiting_payment'
+            | 'partial_payment_received'
+            | 'partial_payout_completed'
+          files_released?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      payment_webhook_events: {
+        Row: {
+          id: string
+          provider: string
+          event_id: string
+          event_name: string
+          object_id: string | null
+          received_at: string
+          payload: Json
+        }
+        Insert: {
+          id?: string
+          provider?: string
+          event_id: string
+          event_name: string
+          object_id?: string | null
+          received_at?: string
+          payload: Json
+        }
+        Update: {
+          id?: string
+          provider?: string
+          event_id?: string
+          event_name?: string
+          object_id?: string | null
+          received_at?: string
+          payload?: Json
+        }
+      }
+      user_wallets: {
+        Row: {
+          id: string
+          user_id: string
+          currency: string
+          available_balance: number
+          pending_balance: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          currency?: string
+          available_balance?: number
+          pending_balance?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          currency?: string
+          available_balance?: number
+          pending_balance?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      wallet_ledger: {
+        Row: {
+          id: string
+          wallet_id: string
+          user_id: string
+          currency: string
+          entry_type: 'credit' | 'debit' | 'hold' | 'release' | 'adjustment'
+          amount: number
+          available_delta: number
+          pending_delta: number
+          balance_after_available: number
+          balance_after_pending: number
+          source_type: 'delivery_escrow' | 'pitch_investment' | 'cashout_request' | 'system_adjustment'
+          source_id: string | null
+          idempotency_key: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          wallet_id: string
+          user_id: string
+          currency?: string
+          entry_type: 'credit' | 'debit' | 'hold' | 'release' | 'adjustment'
+          amount: number
+          available_delta?: number
+          pending_delta?: number
+          balance_after_available: number
+          balance_after_pending: number
+          source_type: 'delivery_escrow' | 'pitch_investment' | 'cashout_request' | 'system_adjustment'
+          source_id?: string | null
+          idempotency_key?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          wallet_id?: string
+          user_id?: string
+          currency?: string
+          entry_type?: 'credit' | 'debit' | 'hold' | 'release' | 'adjustment'
+          amount?: number
+          available_delta?: number
+          pending_delta?: number
+          balance_after_available?: number
+          balance_after_pending?: number
+          source_type?: 'delivery_escrow' | 'pitch_investment' | 'cashout_request' | 'system_adjustment'
+          source_id?: string | null
+          idempotency_key?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+      }
+      cashout_requests: {
+        Row: {
+          id: string
+          user_id: string
+          wallet_id: string
+          currency: string
+          amount: number
+          provider: 'momo' | 'bank' | 'wallet'
+          provider_id: string
+          account_masked: string
+          monime_payout_id: string | null
+          status: 'pending' | 'initiated' | 'completed' | 'failed'
+          failure_reason: string | null
+          initiated_at: string | null
+          completed_at: string | null
+          failed_at: string | null
+          idempotency_key: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          wallet_id: string
+          currency?: string
+          amount: number
+          provider: 'momo' | 'bank' | 'wallet'
+          provider_id: string
+          account_masked: string
+          monime_payout_id?: string | null
+          status?: 'pending' | 'initiated' | 'completed' | 'failed'
+          failure_reason?: string | null
+          initiated_at?: string | null
+          completed_at?: string | null
+          failed_at?: string | null
+          idempotency_key?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          wallet_id?: string
+          currency?: string
+          amount?: number
+          provider?: 'momo' | 'bank' | 'wallet'
+          provider_id?: string
+          account_masked?: string
+          monime_payout_id?: string | null
+          status?: 'pending' | 'initiated' | 'completed' | 'failed'
+          failure_reason?: string | null
+          initiated_at?: string | null
+          completed_at?: string | null
+          failed_at?: string | null
+          idempotency_key?: string | null
+          metadata?: Json
           created_at?: string
           updated_at?: string
         }
@@ -634,7 +1031,31 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      wallet_backfill_receivables: {
+        Args: {
+          p_user_id: string
+          p_currency?: string
+        }
+        Returns: {
+          applied_count: number
+          applied_amount: number
+        }[]
+      }
+      wallet_apply_mutation: {
+        Args: {
+          p_user_id: string
+          p_currency: string
+          p_available_delta: number
+          p_pending_delta: number
+          p_entry_type: 'credit' | 'debit' | 'hold' | 'release' | 'adjustment'
+          p_amount: number
+          p_source_type: 'delivery_escrow' | 'pitch_investment' | 'cashout_request' | 'system_adjustment'
+          p_source_id: string | null
+          p_idempotency_key?: string | null
+          p_metadata?: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       user_role: UserRole
@@ -665,3 +1086,9 @@ export type Bookmark = Database['public']['Tables']['bookmarks']['Row']
 export type Message = Database['public']['Tables']['messages']['Row']
 export type MentorshipFeedback = Database['public']['Tables']['mentorship_feedback']['Row']
 export type WorkSubmission = Database['public']['Tables']['work_submissions']['Row']
+export type PitchInvestment = Database['public']['Tables']['pitch_investments']['Row']
+export type DeliveryEscrow = Database['public']['Tables']['delivery_escrows']['Row']
+export type PaymentWebhookEvent = Database['public']['Tables']['payment_webhook_events']['Row']
+export type UserWallet = Database['public']['Tables']['user_wallets']['Row']
+export type WalletLedgerEntry = Database['public']['Tables']['wallet_ledger']['Row']
+export type CashoutRequest = Database['public']['Tables']['cashout_requests']['Row']

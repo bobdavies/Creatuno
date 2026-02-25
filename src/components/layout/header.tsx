@@ -52,6 +52,8 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
       return [
         ...base,
         { label: t('nav.applications'), href: '/dashboard/employer/applications' },
+        { label: t('nav.deliverables'), href: '/dashboard/employer/deliverables' },
+        { label: t('nav.payments'), href: '/dashboard/employer/payments' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.feed'), href: '/feed' },
       ]
@@ -68,6 +70,7 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
         ...base,
         { label: t('nav.scoutTalents'), href: '/mentorship/scout' },
         { label: t('nav.mentees'), href: '/mentorship' },
+        { label: t('nav.earnings'), href: '/dashboard/earnings' },
         { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.feed'), href: '/feed' },
       ]
@@ -75,6 +78,7 @@ function getDesktopNavLinks(role: string | null, t: (key: string) => string) {
       return [
         ...base,
         { label: t('nav.portfolios'), href: '/dashboard/portfolios' },
+        { label: t('nav.earnings'), href: '/dashboard/earnings' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.pitchStage'), href: '/pitch-stage' },
         { label: t('nav.feed'), href: '/feed' },
@@ -92,6 +96,8 @@ function getMobileMenuLinks(role: string | null, t: (key: string) => string) {
         { label: t('nav.dashboard'), href: dashboardUrl },
         { label: t('nav.postOpportunity'), href: '/opportunities/create' },
         { label: t('nav.applications'), href: '/dashboard/employer/applications' },
+        { label: t('nav.deliverables'), href: '/dashboard/employer/deliverables' },
+        { label: t('nav.payments'), href: '/dashboard/employer/payments' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.villagSquare'), href: '/feed' },
         { label: t('nav.messages'), href: '/messages' },
@@ -124,6 +130,7 @@ function getMobileMenuLinks(role: string | null, t: (key: string) => string) {
       return [
         { label: t('nav.dashboard'), href: dashboardUrl },
         { label: t('nav.portfolios'), href: '/dashboard/portfolios' },
+        { label: t('nav.earnings'), href: '/dashboard/earnings' },
         { label: t('nav.myApplications'), href: '/dashboard/applications' },
         { label: t('nav.opportunities'), href: '/opportunities' },
         { label: t('nav.pitchStage'), href: '/pitch-stage' },
@@ -209,8 +216,25 @@ export function Header() {
     }
 
     fetchUnreadCount()
-    const interval = setInterval(fetchUnreadCount, 30000)
-    return () => clearInterval(interval)
+    const interval = setInterval(fetchUnreadCount, 10000)
+    const onFocus = () => fetchUnreadCount()
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUnreadCount()
+      }
+    }
+    const onForceRefresh = () => fetchUnreadCount()
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('payments:refresh-notifications', onForceRefresh)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('payments:refresh-notifications', onForceRefresh)
+    }
   }, [isSignedIn])
 
   const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`

@@ -3,7 +3,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
-// POST - Like or unlike a post
+const ALLOWED_REACTIONS = new Set(['like', 'smile', 'angry', 'excited'])
+
+async function getReactionSummary(supabase: any, postId: string) {
+  const { data } = await supabase
+    .from('post_reactions')
+    .select('reaction_type')
+    .eq('post_id', postId)
+
+  const reactionCounts = { like: 0, smile: 0, angry: 0, excited: 0 }
+  for (const row of data || []) {
+    if (row?.reaction_type && row.reaction_type in reactionCounts) {
+      reactionCounts[row.reaction_type as keyof typeof reactionCounts] += 1
+    }
+  }
+  return reactionCounts
+}
+
+// POST - Set, switch, or remove a post reaction
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfiguredServer()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
@@ -16,52 +33,85 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { post_id, action } = body
+    const { post_id, reaction_type } = body
 
     if (!post_id) {
       return NextResponse.json({ error: 'Post ID is required' }, { status: 400 })
     }
 
+    const incomingReaction = typeof reaction_type === 'string'
+      ? reaction_type.trim().toLowerCase()
+      : 'like'
+
+    if (!ALLOWED_REACTIONS.has(incomingReaction)) {
+      return NextResponse.json({ error: 'Invalid reaction type' }, { status: 400 })
+    }
+
     const supabase = await createServerClient()
 
-    if (action === 'like') {
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('post_id', post_id)
-        .eq('user_id', userId)
-        .single()
+    // one reaction per user per post
+    const { data: existingReaction } = await supabase
+      .from('post_reactions')
+      .select('id, reaction_type')
+      .eq('post_id', post_id)
+      .eq('user_id', userId)
+      .maybeSingle()
 
-      if (existingLike) {
-        return NextResponse.json({ success: true, already_liked: true })
-      }
-
-      // Add like
-      const { error: likeError } = await supabase
-        .from('likes')
+    if (!existingReaction) {
+      const { error: insertError } = await supabase
+        .from('post_reactions')
         .insert({
           post_id,
           user_id: userId,
+          reaction_type: incomingReaction,
         })
 
-      if (likeError) {
-        console.error('Error liking post:', likeError)
-        return NextResponse.json({ error: 'Failed to like post' }, { status: 500 })
+      if (insertError) {
+        console.error('Error creating reaction:', insertError)
+        return NextResponse.json({ error: 'Failed to react to post' }, { status: 500 })
       }
-
-      // Update likes count on post (count actual likes)
-      const { count } = await supabase
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
+    } else if (existingReaction.reaction_type === incomingReaction) {
+      // Toggle off same reaction.
+      const { error: deleteError } = await supabase
+        .from('post_reactions')
+        .delete()
         .eq('post_id', post_id)
+        .eq('user_id', userId)
 
-      await supabase
-        .from('posts')
-        .update({ likes_count: count ?? 0 })
-        .eq('id', post_id)
+      if (deleteError) {
+        console.error('Error removing reaction:', deleteError)
+        return NextResponse.json({ error: 'Failed to remove reaction' }, { status: 500 })
+      }
+    } else {
+      const { error: updateError } = await supabase
+        .from('post_reactions')
+        .update({ reaction_type: incomingReaction })
+        .eq('id', existingReaction.id)
 
-      // Notify post author (don't notify yourself)
+      if (updateError) {
+        console.error('Error switching reaction:', updateError)
+        return NextResponse.json({ error: 'Failed to update reaction' }, { status: 500 })
+      }
+    }
+
+    const reactionCounts = await getReactionSummary(supabase, post_id)
+    const myReactionQuery = await supabase
+      .from('post_reactions')
+      .select('reaction_type')
+      .eq('post_id', post_id)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const myReaction = myReactionQuery.data?.reaction_type || null
+
+    // Keep legacy likes_count in sync with "like" reactions for compatibility.
+    await supabase
+      .from('posts')
+      .update({ likes_count: reactionCounts.like ?? 0 })
+      .eq('id', post_id)
+
+    // Notify post author (don't notify yourself) when adding/updating to an active reaction.
+    if (myReaction) {
       const { data: post } = await supabase
         .from('posts')
         .select('user_id')
@@ -71,38 +121,15 @@ export async function POST(request: NextRequest) {
       if (post && post.user_id !== userId) {
         await supabase.from('notifications').insert({
           user_id: post.user_id,
-          type: 'post_like',
-          title: 'Someone liked your post',
-          message: 'Your post received a new like',
-          data: { post_id },
+          type: 'post_reaction',
+          title: 'New reaction on your post',
+          message: `Someone reacted with ${myReaction}`,
+          data: { post_id, reaction_type: myReaction },
         })
       }
-    } else {
-      // Remove like
-      const { error: unlikeError } = await supabase
-        .from('likes')
-        .delete()
-        .eq('post_id', post_id)
-        .eq('user_id', userId)
-
-      if (unlikeError) {
-        console.error('Error unliking post:', unlikeError)
-        return NextResponse.json({ error: 'Failed to unlike post' }, { status: 500 })
-      }
-
-      // Update likes count on post (count actual likes)
-      const { count } = await supabase
-        .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('post_id', post_id)
-
-      await supabase
-        .from('posts')
-        .update({ likes_count: count ?? 0 })
-        .eq('id', post_id)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, myReaction, reactionCounts })
   } catch (error) {
     console.error('Error in like POST:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

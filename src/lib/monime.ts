@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 const MONIME_API_BASE = 'https://api.monime.io'
 const MONIME_API_VERSION = 'caph.2025-08-23'
@@ -12,6 +12,13 @@ function getConfig() {
 
   if (!token || !spaceId) {
     throw new Error('Monime credentials not configured. Set MONIME_ACCESS_TOKEN and MONIME_SPACE_ID.')
+  }
+
+  if (token.startsWith('mon_test_')) {
+    console.warn(
+      '[Monime] Using a TEST token. Checkout sessions (/v1/checkout-sessions) will be rejected by Monime. ' +
+      'Set MONIME_DEV_BYPASS=true in .env.local to simulate payments locally, or use a live token (mon_*).'
+    )
   }
 
   return { token, spaceId, financialAccountId, webhookSecret }
@@ -251,13 +258,24 @@ export async function getPayoutStatus(payoutId: string) {
 export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
   const { webhookSecret } = getConfig()
   if (!webhookSecret) {
-    console.warn('MONIME_WEBHOOK_SECRET not set — skipping signature verification')
-    return true
+    console.error('MONIME_WEBHOOK_SECRET not set — rejecting webhook')
+    return false
+  }
+
+  if (!signature) {
+    return false
   }
 
   const computed = createHmac('sha256', webhookSecret)
     .update(rawBody)
     .digest('hex')
 
-  return computed === signature
+  try {
+    const computedBuf = Buffer.from(computed, 'utf8')
+    const signatureBuf = Buffer.from(signature, 'utf8')
+    if (computedBuf.length !== signatureBuf.length) return false
+    return timingSafeEqual(computedBuf, signatureBuf)
+  } catch {
+    return false
+  }
 }

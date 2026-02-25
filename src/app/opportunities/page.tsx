@@ -530,9 +530,9 @@ export default function OpportunitiesPage() {
 
                               {/* Budget badge */}
                               <span className="text-sm font-bold text-brand-purple-600 dark:text-brand-400">
-                                ${opp.budgetMin.toLocaleString()}
+                                {opp.currency || 'SLE'} {opp.budgetMin.toLocaleString()}
                                 {opp.budgetMax !== opp.budgetMin && (
-                                  <span className="text-muted-foreground font-normal text-[10px]"> - ${opp.budgetMax.toLocaleString()}</span>
+                                  <span className="text-muted-foreground font-normal text-[10px]"> - {opp.currency || 'SLE'} {opp.budgetMax.toLocaleString()}</span>
                                 )}
                               </span>
                             </div>

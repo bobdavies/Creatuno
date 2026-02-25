@@ -2,11 +2,11 @@
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon, AnalyticsUpIcon, ArrowRight01Icon, BarChartIcon, Bookmark01Icon, BookmarkCheck01Icon, Camera01Icon, Cancel01Icon, Delete02Icon, FireIcon, Image01Icon, Link01Icon, LinkSquare01Icon, Loading02Icon, Message01Icon, MoreHorizontalIcon, PlayIcon, Refresh01Icon, SentIcon, Share02Icon, SparklesIcon, UserAdd01Icon, UserGroupIcon, Video01Icon } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { useCachedFetch } from '@/hooks/use-cached-fetch'
-import { MdFavoriteBorder, MdBolt } from 'react-icons/md'
+import { MdBolt } from 'react-icons/md'
 import SpotlightCard from '@/components/SpotlightCard'
 import { motion, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
@@ -46,16 +46,30 @@ interface Post {
   likesCount: number
   commentsCount: number
   hasLiked: boolean
+  myReaction: ReactionType | null
+  reactionCounts: ReactionCounts
   createdAt: string
   poll?: PollData
 }
 
+type ReactionType = 'like' | 'smile' | 'angry' | 'excited'
+
+interface ReactionCounts {
+  like: number
+  smile: number
+  angry: number
+  excited: number
+}
+
 interface Comment {
   id: string
+  parentId: string | null
   content: string
   authorName: string
   authorAvatar: string | null
   createdAt: string
+  likesCount: number
+  hasLiked: boolean
 }
 
 interface FeaturedOpp {
@@ -215,7 +229,7 @@ export default function FeedPage() {
         type: o.type,
         budget_min: o.budgetMin || o.budget_min || 0,
         budget_max: o.budgetMax || o.budget_max || 0,
-        currency: o.currency || 'USD',
+        currency: o.currency || 'SLE',
       })
     }
   }, [oppData])
@@ -279,6 +293,8 @@ export default function FeedPage() {
               likesCount: p.likes_count || 0,
               commentsCount: p.comments_count || 0,
               hasLiked: p.hasLiked || false,
+              myReaction: p.myReaction || null,
+              reactionCounts: p.reactionCounts || { like: 0, smile: 0, angry: 0, excited: 0 },
               createdAt: p.created_at,
               poll: poll || undefined,
             }
@@ -402,8 +418,9 @@ export default function FeedPage() {
     setIsRecording(false)
   }
 
-  const uploadMedia = async (files: File[]): Promise<string[]> => {
+  const uploadMedia = async (files: File[]): Promise<{ urls: string[]; failed: number }> => {
     const urls: string[] = []
+    let failed = 0
     for (const file of files) {
       try {
         const formData = new FormData()
@@ -413,10 +430,16 @@ export default function FeedPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.url) urls.push(data.url)
+          else failed += 1
+        } else {
+          failed += 1
         }
-      } catch (error) { console.error('Error uploading:', error) }
+      } catch (error) {
+        console.error('Error uploading:', error)
+        failed += 1
+      }
     }
-    return urls
+    return { urls, failed }
   }
 
   // ─── Post Actions ─────────────────────────────────────────────────────
@@ -453,16 +476,39 @@ export default function FeedPage() {
       // Upload images
       if (selectedImages.length > 0) {
         toast.info('Uploading images...')
-        imageUrls = await uploadMedia(selectedImages)
+        const imageUpload = await uploadMedia(selectedImages)
+        imageUrls = imageUpload.urls
+        if (imageUpload.failed > 0 || imageUrls.length !== selectedImages.length) {
+          toast.error('Some images failed to upload. Please retry before posting.')
+          setIsPosting(false)
+          return
+        }
       }
 
       // Upload or set video
       if (selectedVideo) {
         toast.info('Uploading video...')
-        const videoUrls = await uploadMedia([selectedVideo])
-        if (videoUrls[0]) videoUrl = videoUrls[0]
+        const videoUpload = await uploadMedia([selectedVideo])
+        if (videoUpload.failed > 0 || !videoUpload.urls[0]) {
+          toast.error('Video upload failed. Please retry before posting.')
+          setIsPosting(false)
+          return
+        }
+        videoUrl = videoUpload.urls[0]
       } else if (videoLinkUrl.trim()) {
         videoUrl = videoLinkUrl.trim()
+      }
+
+      // Guard against silent media loss: if user selected media, require successful URLs.
+      if (selectedImages.length > 0 && imageUrls.length !== selectedImages.length) {
+        toast.error('Image upload is incomplete. Post not shared.')
+        setIsPosting(false)
+        return
+      }
+      if (selectedVideo && !videoUrl) {
+        toast.error('Video upload is incomplete. Post not shared.')
+        setIsPosting(false)
+        return
       }
 
       // Build content with poll prefix if needed
@@ -483,7 +529,7 @@ export default function FeedPage() {
           images: imageUrls,
           videoUrl,
           author: { id: user?.id || 'anonymous', fullName: user?.fullName || 'You', avatarUrl: user?.imageUrl || null, role: 'creative' },
-          likesCount: 0, commentsCount: 0, hasLiked: false, createdAt: new Date().toISOString(),
+          likesCount: 0, commentsCount: 0, hasLiked: false, myReaction: null, reactionCounts: { like: 0, smile: 0, angry: 0, excited: 0 }, createdAt: new Date().toISOString(),
           poll: pollData,
         }
         setPosts(prev => [offlinePost, ...prev])
@@ -520,7 +566,7 @@ export default function FeedPage() {
           images: imageUrls,
           videoUrl,
           author: { id: user?.id || 'anonymous', fullName: user?.fullName || 'You', avatarUrl: user?.imageUrl || null, role: 'creative' },
-          likesCount: 0, commentsCount: 0, hasLiked: false, createdAt: new Date().toISOString(),
+          likesCount: 0, commentsCount: 0, hasLiked: false, myReaction: null, reactionCounts: { like: 0, smile: 0, angry: 0, excited: 0 }, createdAt: new Date().toISOString(),
           poll: pollData,
         }
         setPosts(prev => [newPost, ...prev])
@@ -531,19 +577,34 @@ export default function FeedPage() {
     finally { setIsPosting(false) }
   }
 
-  const handleLike = async (postId: string) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        const newLiked = !post.hasLiked
-        fetch('/api/posts/like', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ post_id: postId, action: newLiked ? 'like' : 'unlike' }),
-        }).catch(console.error)
-        return { ...post, hasLiked: newLiked, likesCount: newLiked ? post.likesCount + 1 : post.likesCount - 1 }
+  const handleReaction = async (postId: string, reactionType: ReactionType) => {
+    try {
+      const response = await fetch('/api/posts/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: postId, reaction_type: reactionType }),
+      })
+      if (!response.ok) {
+        toast.error('Unable to update reaction')
+        return
       }
-      return post
-    }))
+      const data = await response.json()
+      setPosts(prev => prev.map(post => {
+        if (post.id !== postId) return post
+        const reactionCounts: ReactionCounts = data.reactionCounts || post.reactionCounts
+        const myReaction: ReactionType | null = data.myReaction || null
+        return {
+          ...post,
+          myReaction,
+          hasLiked: myReaction === 'like',
+          reactionCounts,
+          likesCount: reactionCounts.like || 0,
+        }
+      }))
+    } catch (error) {
+      console.error('Error updating reaction:', error)
+      toast.error('Unable to update reaction')
+    }
   }
 
   const handleDeletePost = async (postId: string) => {
@@ -1021,7 +1082,7 @@ export default function FeedPage() {
                     >
                       <PostCard
                         post={post}
-                        onLike={() => handleLike(post.id)}
+                        onReact={(reaction) => handleReaction(post.id, reaction)}
                         onDelete={() => handleDeletePost(post.id)}
                         onBookmark={() => handleBookmark(post.id)}
                         isOwner={post.author.id === user?.id}
@@ -1351,9 +1412,16 @@ function PollDisplay({ postId, poll }: { postId: string; poll: PollData }) {
 
 // ─── Post Card Component ────────────────────────────────────────────────────
 
-function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }: {
+const POST_REACTION_OPTIONS: { type: ReactionType; emoji: string; label: string }[] = [
+  { type: 'like', emoji: '👍', label: 'Like' },
+  { type: 'smile', emoji: '😊', label: 'Smile' },
+  { type: 'angry', emoji: '😡', label: 'Angry' },
+  { type: 'excited', emoji: '🤩', label: 'Excited' },
+]
+
+function PostCard({ post, onReact, onDelete, onBookmark, isOwner, isBookmarked }: {
   post: Post
-  onLike: () => void
+  onReact: (reaction: ReactionType) => void
   onDelete: () => void
   onBookmark: () => void
   isOwner: boolean
@@ -1362,7 +1430,10 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null)
   const [isCommenting, setIsCommenting] = useState(false)
+  const [isReplying, setIsReplying] = useState<string | null>(null)
   const [isLoadingComments, setIsLoadingComments] = useState(false)
   const [commentsLoaded, setCommentsLoaded] = useState(false)
   const { user } = useUser()
@@ -1379,7 +1450,14 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
         const data = await response.json()
         if (data.comments) {
           setComments(data.comments.map((c: any) => ({
-            id: c.id, content: c.content, authorName: c.profiles?.full_name || 'Unknown User', authorAvatar: c.profiles?.avatar_url || null, createdAt: c.created_at,
+            id: c.id,
+            parentId: c.parent_id || null,
+            content: c.content,
+            authorName: c.profiles?.full_name || 'Unknown User',
+            authorAvatar: c.profiles?.avatar_url || null,
+            createdAt: c.created_at,
+            likesCount: c.likesCount || 0,
+            hasLiked: !!c.hasLiked,
           })))
           setCommentsLoaded(true)
         }
@@ -1388,29 +1466,136 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
     finally { setIsLoadingComments(false) }
   }
 
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return
-    setIsCommenting(true)
+  const handleAddComment = async (parentId?: string) => {
+    const draft = parentId ? (replyDrafts[parentId] || '') : newComment
+    if (!draft.trim()) return
+    if (parentId) setIsReplying(parentId)
+    else setIsCommenting(true)
     try {
       const response = await fetch('/api/posts/comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_id: post.id, content: newComment.trim() }),
+        body: JSON.stringify({ post_id: post.id, parent_id: parentId || null, content: draft.trim() }),
       })
       if (response.ok) {
-        setComments([...comments, {
-          id: `comment_${Date.now()}`, content: newComment.trim(), authorName: user?.fullName || 'You', authorAvatar: user?.imageUrl || null, createdAt: new Date().toISOString(),
-        }])
-        setNewComment('')
+        if (parentId) {
+          setReplyDrafts(prev => ({ ...prev, [parentId]: '' }))
+          setActiveReplyId(null)
+        } else {
+          setNewComment('')
+        }
+        await loadComments()
       }
     } catch (error) { console.error('Error adding comment:', error) }
-    finally { setIsCommenting(false) }
+    finally {
+      setIsCommenting(false)
+      setIsReplying(null)
+    }
   }
 
-  const isShort = post.content.length < 120 && post.images.length === 0 && !post.videoUrl && !post.poll
+  const handleCommentLike = async (commentId: string) => {
+    try {
+      const response = await fetch('/api/posts/comment/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: commentId }),
+      })
+      if (!response.ok) return
+      const data = await response.json()
+      setComments(prev => prev.map(comment => comment.id === commentId
+        ? { ...comment, likesCount: data.likesCount || 0, hasLiked: !!data.hasLiked }
+        : comment))
+    } catch (error) {
+      console.error('Error liking comment:', error)
+    }
+  }
+
+  const hasUploadedMedia = post.images.length > 0 || !!post.videoUrl
+  const isShort = post.content.length < 120 && !hasUploadedMedia && !post.poll
   const urls = detectUrls(post.content)
   const embeddableUrl = urls.find(isEmbeddableVideoUrl)
+  const shouldRenderEmbeddableFromText = !!embeddableUrl && embeddableUrl !== post.videoUrl
   const linkUrls = urls.filter(u => !isEmbeddableVideoUrl(u))
+  const commentsByParent = useMemo(() => {
+    const grouped = new Map<string, Comment[]>()
+    for (const comment of comments) {
+      const key = comment.parentId || 'root'
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push(comment)
+    }
+    return grouped
+  }, [comments])
+
+  const renderCommentNode = (comment: Comment, depth: number = 0): React.ReactNode => {
+    const children = commentsByParent.get(comment.id) || []
+    const replyValue = replyDrafts[comment.id] || ''
+    const showingReply = activeReplyId === comment.id
+
+    return (
+      <div key={comment.id} className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex gap-2"
+          style={{ marginLeft: `${Math.min(depth, 6) * 16}px` }}
+        >
+          <Avatar className="w-7 h-7 flex-shrink-0">
+            <AvatarImage src={comment.authorAvatar || undefined} />
+            <AvatarFallback className="text-[9px] bg-muted font-bold">{comment.authorName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-semibold text-foreground">{comment.authorName}</p>
+              <span className="text-[9px] text-muted-foreground">{formatDistanceToNow(comment.createdAt)}</span>
+            </div>
+            <p className="text-xs text-foreground mt-0.5">{comment.content}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={() => handleCommentLike(comment.id)}
+                className={cn(
+                  'text-[10px] font-medium px-2 py-1 rounded-full transition-colors',
+                  comment.hasLiked ? 'text-red-500 bg-red-500/10' : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/5'
+                )}
+              >
+                Like{comment.likesCount > 0 ? ` (${comment.likesCount})` : ''}
+              </button>
+              <button
+                onClick={() => setActiveReplyId(prev => prev === comment.id ? null : comment.id)}
+                className="text-[10px] font-medium px-2 py-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              >
+                Reply
+              </button>
+            </div>
+
+            {showingReply && (
+              <div className="mt-2 flex gap-1.5">
+                <input
+                  placeholder="Write a reply..."
+                  value={replyValue}
+                  onChange={(e) => setReplyDrafts(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddComment(comment.id)}
+                  className="flex-1 bg-background/60 border border-border/50 rounded-full px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand-500/40"
+                />
+                <button
+                  onClick={() => handleAddComment(comment.id)}
+                  disabled={isReplying === comment.id || !replyValue.trim()}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-brand-500 hover:bg-brand-600 text-brand-dark disabled:opacity-40 transition-colors"
+                >
+                  {isReplying === comment.id ? '...' : 'Send'}
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+        {children.length > 0 && (
+          <div className="space-y-2">
+            {children.map((child) => renderCommentNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <SpotlightCard className={cn(
@@ -1457,8 +1642,33 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
         </DropdownMenu>
       </div>
 
+      {/* Uploaded media first (Instagram/X style) */}
+      {hasUploadedMedia && (
+        <div className="px-4 pt-3 pb-2 space-y-2">
+          {post.images.length > 0 && (
+            <div className={cn(
+              'grid gap-1.5 rounded-xl overflow-hidden',
+              post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+            )}>
+              {post.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img}
+                  alt={`Post image ${idx + 1}`}
+                  className={cn(
+                    'w-full object-cover rounded-xl',
+                    post.images.length === 1 ? 'max-h-[400px]' : 'h-48'
+                  )}
+                />
+              ))}
+            </div>
+          )}
+          {post.videoUrl && <VideoEmbed url={post.videoUrl} />}
+        </div>
+      )}
+
       {/* Content */}
-      <div className="px-4 pt-3 pb-2">
+      <div className={cn('px-4 pb-2', hasUploadedMedia ? 'pt-1' : 'pt-3')}>
         {post.content && (
           <p className={cn(
             'text-foreground whitespace-pre-wrap',
@@ -1475,54 +1685,32 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
         {linkUrls.map((url, i) => <LinkPreview key={i} url={url} />)}
 
         {/* Embedded video from URL in content */}
-        {embeddableUrl && <VideoEmbed url={embeddableUrl} />}
+        {shouldRenderEmbeddableFromText && embeddableUrl && <VideoEmbed url={embeddableUrl} />}
       </div>
-
-      {/* Images */}
-      {post.images.length > 0 && (
-        <div className="px-4 pb-2">
-          <div className={cn(
-            'grid gap-1.5 rounded-xl overflow-hidden mt-2',
-            post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-          )}>
-            {post.images.map((img, idx) => (
-              <img
-                key={idx}
-                src={img}
-                alt={`Post image ${idx + 1}`}
-                className={cn(
-                  'w-full object-cover rounded-xl',
-                  post.images.length === 1 ? 'max-h-[400px]' : 'h-48'
-                )}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Video */}
-      {post.videoUrl && (
-        <div className="px-4 pb-2">
-          <VideoEmbed url={post.videoUrl} />
-        </div>
-      )}
 
       {/* Footer: Actions */}
       <div className="px-4 py-3 border-t border-border/30 mt-1">
         <div className="flex items-center gap-1">
-          <motion.button
-            whileTap={{ scale: 1.3 }}
-            onClick={onLike}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors',
-              post.hasLiked
-                ? 'text-red-500 bg-red-500/10'
-                : 'text-muted-foreground hover:text-red-500 hover:bg-red-500/5'
-            )}
-          >
-            <MdFavoriteBorder className={cn('w-4 h-4', post.hasLiked && 'fill-current')} />
-            {post.likesCount > 0 && <span>{post.likesCount}</span>}
-          </motion.button>
+          <div className="flex items-center gap-1 bg-muted/30 border border-border/40 rounded-full p-1">
+            {POST_REACTION_OPTIONS.map((option) => {
+              const count = post.reactionCounts[option.type] || 0
+              const isActive = post.myReaction === option.type
+              return (
+                <button
+                  key={option.type}
+                  onClick={() => onReact(option.type)}
+                  title={option.label}
+                  className={cn(
+                    'flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors',
+                    isActive ? 'bg-brand-purple-500/15 text-brand-purple-600 dark:text-brand-400' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                  )}
+                >
+                  <span>{option.emoji}</span>
+                  {count > 0 && <span>{count}</span>}
+                </button>
+              )
+            })}
+          </div>
 
           <button
             onClick={() => setShowComments(!showComments)}
@@ -1571,27 +1759,7 @@ function PostCard({ post, onLike, onDelete, onBookmark, isOwner, isBookmarked }:
                 <div className="flex justify-center py-3"><HugeiconsIcon icon={Loading02Icon} className="w-5 h-5 animate-spin text-brand-purple-600 dark:text-brand-400" /></div>
               ) : comments.length > 0 ? (
                 <div className="space-y-2.5 max-h-60 overflow-y-auto">
-                  {comments.map((comment, i) => (
-                    <motion.div
-                      key={comment.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: i * 0.03 }}
-                      className="flex gap-2"
-                    >
-                      <Avatar className="w-7 h-7 flex-shrink-0">
-                        <AvatarImage src={comment.authorAvatar || undefined} />
-                        <AvatarFallback className="text-[9px] bg-muted font-bold">{comment.authorName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <p className="text-[11px] font-semibold text-foreground">{comment.authorName}</p>
-                          <span className="text-[9px] text-muted-foreground">{formatDistanceToNow(comment.createdAt)}</span>
-                        </div>
-                        <p className="text-xs text-foreground mt-0.5">{comment.content}</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {(commentsByParent.get('root') || []).map((comment) => renderCommentNode(comment))}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-2">No comments yet. Be the first!</p>

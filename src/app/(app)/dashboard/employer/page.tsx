@@ -363,6 +363,7 @@ export default function EmployerDashboardPage() {
             {[
               { label: 'Post Opportunity', href: '/opportunities/create', icon: Add01Icon, badge: null, gradient: 'from-brand-500/5 to-brand-purple-500/5' },
               { label: 'Review Applications', href: '/dashboard/employer/applications', icon: CheckListIcon, badge: pendingApps > 0 ? pendingApps : null, gradient: 'from-brand-purple-500/5 to-brand-purple-500/5' },
+              { label: 'Payment History', href: '/dashboard/employer/payments', icon: AnalyticsUpIcon, badge: null, gradient: 'from-emerald-500/5 to-brand-purple-500/5' },
               { label: 'Messages', href: '/messages', icon: Message01Icon, badge: messageCount > 0 ? messageCount : null, gradient: 'from-brand-purple-500/5 to-brand-purple-500/5' },
               { label: 'Browse Portfolios', href: '/portfolios', icon: FolderOpenIcon, badge: null, gradient: 'from-brand-purple-500/5 to-brand-purple-500/5' },
               { label: 'Search Talent', href: '/search', icon: Search01Icon, badge: null, gradient: 'from-rose-500/5 to-pink-500/5' },
@@ -644,7 +645,7 @@ export default function EmployerDashboardPage() {
 
                         {app.proposed_budget > 0 && (
                         <p className="text-xs text-muted-foreground mt-2">
-                            Proposed: <span className="text-foreground font-medium">${app.proposed_budget.toLocaleString()}</span>
+                            Proposed: <span className="text-foreground font-medium">Le {app.proposed_budget.toLocaleString()}</span>
                           </p>
                         )}
                       </SpotlightCard>
@@ -720,7 +721,7 @@ export default function EmployerDashboardPage() {
                           className="h-7 text-brand-purple-600 dark:text-brand-400 hover:bg-brand-purple-500/10 dark:bg-brand-500/10 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                           asChild
                         >
-                          <Link href="/dashboard/employer/applications">
+                          <Link href="/dashboard/employer/deliverables">
                             Review
                           </Link>
                         </Button>
@@ -744,11 +745,18 @@ export default function EmployerDashboardPage() {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-6 h-0.5 bg-brand-500 rounded-full" />
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                Budget Overview
-              </h2>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-0.5 bg-brand-500 rounded-full" />
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  Budget Overview
+                </h2>
+              </div>
+              <Button variant="ghost" size="sm" className="text-brand-purple-600 dark:text-brand-400 hover:text-brand-600 text-xs gap-1" asChild>
+                <Link href="/dashboard/employer/payments">
+                  All Payments <HugeiconsIcon icon={ArrowRight01Icon} className="w-3 h-3" />
+                </Link>
+              </Button>
             </div>
 
             <SpotlightCard className="p-4 sm:p-5">
@@ -759,7 +767,7 @@ export default function EmployerDashboardPage() {
                     Total Budget Posted
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-                    ${totalBudgetPosted.toLocaleString()}
+                    Le {totalBudgetPosted.toLocaleString()}
                   </p>
                   <div className="mt-3 h-2 rounded-full bg-muted/60 overflow-hidden">
                     <motion.div
@@ -778,7 +786,7 @@ export default function EmployerDashboardPage() {
                     Committed
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-                    ${totalCommitted.toLocaleString()}
+                    Le {totalCommitted.toLocaleString()}
                   </p>
                   <div className="mt-3 h-2 rounded-full bg-muted/60 overflow-hidden">
                     <motion.div

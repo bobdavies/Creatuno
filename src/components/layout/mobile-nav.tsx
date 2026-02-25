@@ -15,6 +15,7 @@ import {
   CheckListIcon,
   Compass01Icon,
   SparklesIcon,
+  PackageIcon,
 } from '@hugeicons/core-free-icons'
 import { motion, AnimatePresence } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -49,7 +50,7 @@ const employerNav: NavItem[] = [
   { labelKey: 'nav.home', href: '/dashboard/employer', icon: Home01Icon },
   { labelKey: 'nav.post', href: '/opportunities/create', icon: AddCircleIcon },
   { labelKey: 'nav.applications', href: '/dashboard/employer/applications', icon: CheckListIcon },
-  { labelKey: 'nav.feed', href: '/feed', icon: Message01Icon },
+  { labelKey: 'nav.deliverables', href: '/dashboard/employer/deliverables', icon: PackageIcon },
   { labelKey: 'nav.profile', href: '/profile', icon: UserIcon },
 ]
 

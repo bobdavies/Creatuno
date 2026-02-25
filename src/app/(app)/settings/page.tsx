@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [paymentProvider, setPaymentProvider] = useState<string>('')
   const [paymentProviderId, setPaymentProviderId] = useState<string>('')
   const [paymentAccount, setPaymentAccount] = useState<string>('')
+  const [payoutMode, setPayoutMode] = useState<'auto' | 'wallet'>('auto')
   const [isSavingPayment, setIsSavingPayment] = useState(false)
   const [paymentLoaded, setPaymentLoaded] = useState(false)
 
@@ -57,7 +58,7 @@ export default function SettingsPage() {
   }, [isLoaded, settings.theme, setTheme])
 
   useEffect(() => {
-    if (userId && role === 'creative' && !paymentLoaded) {
+    if (userId && (role === 'creative' || role === 'mentor') && !paymentLoaded) {
       loadPaymentSettings()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,6 +74,7 @@ export default function SettingsPage() {
           setPaymentProvider(profile.payment_provider || '')
           setPaymentProviderId(profile.payment_provider_id || '')
           setPaymentAccount(profile.payment_account || '')
+          setPayoutMode(profile.payout_mode === 'wallet' ? 'wallet' : 'auto')
         }
         setPaymentLoaded(true)
       }
@@ -99,8 +101,8 @@ export default function SettingsPage() {
   }
 
   const handleSavePayment = async () => {
-    if (!paymentProvider || !paymentProviderId || !paymentAccount) {
-      toast.error('Please fill in all payment fields')
+    if (payoutMode === 'auto' && (!paymentProvider || !paymentProviderId || !paymentAccount)) {
+      toast.error('Auto payout requires full payment account details')
       return
     }
     setIsSavingPayment(true)
@@ -109,18 +111,22 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          payment_provider: paymentProvider,
-          payment_provider_id: paymentProviderId,
-          payment_account: paymentAccount,
+          payment_provider: paymentProvider || null,
+          payment_provider_id: paymentProviderId || null,
+          payment_account: paymentAccount || null,
+          payout_mode: payoutMode,
         }),
       })
       if (res.ok) {
         toast.success('Payment method saved')
       } else {
-        toast.error('Failed to save payment method')
+        const payload = await res.json().catch(() => null)
+        const reason = payload?.error || 'Failed to save payment method'
+        const detail = payload?.detail || payload?.hint || ''
+        toast.error(detail ? `${reason}: ${detail}` : reason)
       }
-    } catch {
-      toast.error('Failed to save payment method')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save payment method')
     } finally {
       setIsSavingPayment(false)
     }
@@ -327,16 +333,49 @@ export default function SettingsPage() {
           {/* ━━━ RIGHT COLUMN ━━━ */}
           <div className="space-y-10">
 
-            {/* ── Payment Method (creatives only) ── */}
-            {currentRole === 'creative' && (
+            {/* ── Payment Method (creatives and mentors) ── */}
+            {(currentRole === 'creative' || currentRole === 'mentor') && (
               <section>
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 pb-2 border-b border-border">
                   Payment Method
                 </h3>
                 <div className="pt-4 space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Set up your payment method to receive payments from employers. This is required before you can receive payouts.
+                    Set up your payment method to receive payouts. {currentRole === 'mentor' ? 'This is required to receive pitch funding from investors.' : 'This is required before you can receive payments from employers or pitch funding from investors.'}
                   </p>
+
+                  <div>
+                    <Label className="font-medium text-sm">Payout Mode</Label>
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPayoutMode('auto')}
+                        className={cn(
+                          'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                          payoutMode === 'auto'
+                            ? 'border-brand-purple-500 bg-brand-purple-500/10 text-brand-purple-600 dark:text-brand-400'
+                            : 'border-border text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        Auto payout
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayoutMode('wallet')}
+                        className={cn(
+                          'rounded-lg border px-3 py-2 text-xs font-semibold transition-colors',
+                          payoutMode === 'wallet'
+                            ? 'border-brand-purple-500 bg-brand-purple-500/10 text-brand-purple-600 dark:text-brand-400'
+                            : 'border-border text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        Wallet first
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Auto payout sends funds directly to your provider. Wallet first credits your Creatuno wallet so you cash out manually.
+                    </p>
+                  </div>
 
                   <div>
                     <Label className="font-medium text-sm">Payment Provider</Label>
@@ -378,7 +417,7 @@ export default function SettingsPage() {
                   <Button
                     className="w-full rounded-lg bg-brand-purple-600 hover:bg-brand-purple-700 text-white"
                     onClick={handleSavePayment}
-                    disabled={isSavingPayment || !paymentProvider || !paymentAccount}
+                    disabled={isSavingPayment || (payoutMode === 'auto' && (!paymentProvider || !paymentAccount))}
                   >
                     {isSavingPayment ? (
                       <><HugeiconsIcon icon={Loading02Icon} className="w-4 h-4 mr-2 animate-spin" /> Saving...</>

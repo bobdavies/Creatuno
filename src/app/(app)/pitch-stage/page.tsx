@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/providers/user-session-provider'
 import SpotlightCard from '@/components/SpotlightCard'
+import { formatCurrency } from '@/lib/currency'
 
 const ease = [0.23, 1, 0.32, 1] as const
 
@@ -65,10 +66,6 @@ interface Pitch {
   sender: { user_id: string; full_name: string; avatar_url: string | null } | null
   creative: { user_id: string; full_name: string; avatar_url: string | null; skills: string[] } | null
   portfolio: { id: string; title: string; slug: string } | null
-}
-
-function formatCurrency(amount: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
 }
 
 function timeAgo(date: string) {

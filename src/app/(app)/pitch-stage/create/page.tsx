@@ -44,7 +44,7 @@ const SKILL_SUGGESTIONS = [
   'Graphic Design', 'Sound Design', 'Game Design',
 ]
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'ZAR', 'NGN', 'KES']
+const CURRENCIES = ['SLE', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'ZAR']
 
 const STEPS = [
   { id: 1, label: 'Portfolio' },
@@ -90,7 +90,7 @@ export default function CreatePitchPage() {
     category: '',
     skills: [] as string[],
     funding_ask: '',
-    currency: 'USD',
+    currency: 'SLE',
     cover_image: '',
     video_url: '',
   })

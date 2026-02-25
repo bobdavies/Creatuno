@@ -291,7 +291,7 @@ export default function ProfilePage() {
     ? [
         { value: stats.portfolioViews, label: t('profile.portfolioViews') },
         { value: stats.activeApplications, label: t('profile.activeApplications'), href: '/dashboard/applications' },
-        { value: `$${stats.totalEarnings.toLocaleString()}`, label: t('profile.totalEarnings') },
+        { value: `Le ${stats.totalEarnings.toLocaleString()}`, label: t('profile.totalEarnings') },
       ]
     : currentRole === 'mentor'
     ? [

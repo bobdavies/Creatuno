@@ -99,6 +99,8 @@ export default function MentorDashboardPage() {
   const [sentOffersCount, setSentOffersCount] = useState(0)
   const [unreadNotifs, setUnreadNotifs] = useState(0)
   const [statsInView, setStatsInView] = useState(false)
+  const [pitchFunding, setPitchFunding] = useState<any[]>([])
+  const [pitchFundingStats, setPitchFundingStats] = useState({ total_received: 0, count: 0 })
 
   // ─── Data Fetching ─────────────────────────────────────────────────────
 
@@ -111,13 +113,14 @@ export default function MentorDashboardPage() {
   const loadMentorData = async () => {
     setIsLoading(true)
     try {
-      const [profileRes, pendingRes, activeRes, pastRes, offersRes, notifsRes] = await Promise.all([
+      const [profileRes, pendingRes, activeRes, pastRes, offersRes, notifsRes, fundingRes] = await Promise.all([
         fetch('/api/profiles'),
         fetch('/api/mentorship?role=mentor&status=pending'),
         fetch('/api/mentorship?role=mentor&status=accepted'),
         fetch('/api/mentorship?role=mentor&status=declined'),
         fetch('/api/mentorship/offers?role=mentor').catch(() => null),
         fetch('/api/notifications?unread_only=true').catch(() => null),
+        fetch('/api/payments/investment-history').then(r => r.ok ? r.json() : null).catch(() => null),
       ])
 
       if (profileRes.ok) {
@@ -155,6 +158,10 @@ export default function MentorDashboardPage() {
       if (notifsRes?.ok) {
         const data = await notifsRes.json()
         setUnreadNotifs(data.notifications?.length || 0)
+      }
+      if (fundingRes) {
+        setPitchFunding(fundingRes.investments || [])
+        setPitchFundingStats({ total_received: fundingRes.stats?.total_received || 0, count: fundingRes.stats?.funded_count || 0 })
       }
     } catch (error) {
       console.error('Error loading mentor data:', error)
@@ -433,6 +440,55 @@ export default function MentorDashboardPage() {
       </div>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          PITCH FUNDING RECEIVED
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {(pitchFunding.length > 0 || pitchFundingStats.total_received > 0) && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-8">
+          <motion.section variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Pitch Funding</h2>
+                <p className="text-xs text-muted-foreground">Investments received from pitches you championed</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-emerald-500">Le {pitchFundingStats.total_received.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">{pitchFundingStats.count} funded</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {pitchFunding.slice(0, 5).map((inv: any) => {
+                const isCompleted = ['payment_received', 'payout_initiated', 'completed'].includes(inv.status)
+                const date = new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                return (
+                  <Link key={inv.id} href={`/pitch-stage/${inv.pitch_id}`} className="block">
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-card/50 hover:bg-card/80 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-green-600">{inv.investor?.full_name?.charAt(0) || '$'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{inv.pitch?.title || 'Pitch'}</p>
+                        <p className="text-[10px] text-muted-foreground">from {inv.investor?.full_name || 'Investor'} &middot; {date}</p>
+                      </div>
+                      <p className={cn('text-sm font-bold', isCompleted ? 'text-emerald-500' : 'text-foreground')}>
+                        {isCompleted ? '+' : ''}{inv.currency || 'SLE'} {inv.net_payout_amount?.toLocaleString()}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+            {pitchFunding.length > 5 && (
+              <div className="text-center mt-3">
+                <Button variant="outline" size="sm" className="rounded-full text-xs" asChild>
+                  <Link href="/dashboard/earnings">View All Earnings</Link>
+                </Button>
+              </div>
+            )}
+          </motion.section>
+        </div>
+      )}
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SECTION 3: QUICK ACTIONS
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-10">
@@ -448,6 +504,7 @@ export default function MentorDashboardPage() {
               { label: 'Champion on Pitch Stage', href: '/pitch-stage/create', badge: undefined },
               { label: 'Messages', href: '/messages', badge: undefined },
               { label: 'Notifications', href: '/notifications', badge: unreadNotifs > 0 ? `${unreadNotifs}` : undefined },
+              { label: 'Wallet', href: '/dashboard/wallet', badge: undefined },
               { label: 'My Profile', href: '/profile', badge: undefined },
               { label: 'Opportunities', href: '/opportunities', badge: undefined },
               { label: 'Settings', href: '/settings', badge: undefined },

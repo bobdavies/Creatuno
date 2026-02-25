@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/providers/user-session-provider'
+import { formatCurrency } from '@/lib/currency'
 
 const ease = [0.23, 1, 0.32, 1] as const
 
@@ -42,10 +43,6 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   live: { label: 'Live', className: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' },
   funded: { label: 'Funded', className: 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/20' },
   closed: { label: 'Closed', className: 'bg-muted text-muted-foreground border-border/50' },
-}
-
-function formatCurrency(amount: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
 }
 
 export default function MyPitchesPage() {

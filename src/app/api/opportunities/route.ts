@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
 import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
+import { normalizeCurrency, DEFAULT_CURRENCY } from '@/lib/currency'
 
 // GET - Fetch opportunities
 export async function GET(request: NextRequest) {
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
         category,
         budget_min: budget_min || 0,
         budget_max: budget_max || 0,
-        currency: currency || 'USD',
+        currency: normalizeCurrency(currency) || DEFAULT_CURRENCY,
         location: location || 'Remote',
         is_remote: is_remote ?? true,
         deadline,

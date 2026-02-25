@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { privateCachedJson } from '@/lib/api/cache-headers'
 import { auth } from '@clerk/nextjs/server'
-import { createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
+import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 // ---------------------------------------------------------------------------
 // GET – Fetch work submissions
@@ -23,9 +23,32 @@ export async function GET(request: NextRequest) {
     const applicationId = searchParams.get('application_id')
     const role = searchParams.get('role')
 
-    const supabase = await createServerClient()
+    const supabase = createAdminClient()
 
     if (applicationId) {
+      const { data: application, error: appError } = await supabase
+        .from('applications')
+        .select(`
+          id,
+          applicant_id,
+          opportunities:opportunity_id (
+            user_id
+          )
+        `)
+        .eq('id', applicationId)
+        .single()
+
+      if (appError || !application) {
+        return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+      }
+
+      const opp = application.opportunities as unknown as { user_id: string } | null
+      const isApplicant = application.applicant_id === userId
+      const isEmployer = opp?.user_id === userId
+      if (!isApplicant && !isEmployer) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      }
+
       const { data, error } = await supabase
         .from('work_submissions')
         .select('*')
@@ -45,6 +68,16 @@ export async function GET(request: NextRequest) {
           profiles:creative_id (
             full_name,
             avatar_url
+          ),
+          opportunities:opportunity_id (
+            id,
+            title,
+            type,
+            category
+          ),
+          applications:application_id (
+            id,
+            proposed_budget
           )
         `)
         .eq('employer_id', userId)
@@ -106,7 +139,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerClient()
+    const supabase = createAdminClient()
 
     // Verify the application exists, belongs to this user, and is accepted
     const { data: application, error: appError } = await supabase
@@ -271,7 +304,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const supabase = await createServerClient()
+    const supabase = createAdminClient()
 
     // Fetch the full submission
     const { data: existingSubmission, error: fetchError } = await supabase
@@ -283,7 +316,7 @@ export async function PATCH(request: NextRequest) {
         opportunity_id,
         application_id,
         revision_count,
-        status as current_status
+        status
       `)
       .eq('id', submission_id)
       .single()
@@ -354,30 +387,6 @@ export async function PATCH(request: NextRequest) {
 
     // Send appropriate notification
     if (status === 'approved') {
-      // Create an escrow record so the frontend can initiate payment
-      const { data: application } = await supabase
-        .from('applications')
-        .select('proposed_budget')
-        .eq('id', existingSubmission.application_id)
-        .single()
-
-      const agreedAmount = Number(application?.proposed_budget || 0)
-
-      await supabase.from('delivery_escrows').insert({
-        submission_id,
-        application_id: existingSubmission.application_id,
-        opportunity_id: existingSubmission.opportunity_id,
-        creative_id: existingSubmission.creative_id,
-        employer_id: existingSubmission.employer_id,
-        agreed_amount: agreedAmount,
-        payment_amount: agreedAmount,
-        payment_percentage: 100,
-        currency: 'SLE',
-        platform_fee: 0,
-        net_payout_amount: agreedAmount,
-        status: 'review_approved',
-      })
-
       const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: existingSubmission.creative_id,
         type: 'work_approved',

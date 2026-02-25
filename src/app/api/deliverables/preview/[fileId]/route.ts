@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createAdminClient, createServerClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
+import { createAdminClient, isSupabaseConfiguredServer } from '@/lib/supabase/server'
 
 /**
  * GET /api/deliverables/preview/[fileId]
@@ -32,22 +32,19 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const submissionId = searchParams.get('submission_id')
   const filePath = searchParams.get('path')
-  const fileName = searchParams.get('name')
-  const fileType = searchParams.get('type') || ''
-  const fileSize = searchParams.get('size')
   const { fileId } = await params
 
-  if (!submissionId || !filePath) {
-    return NextResponse.json({ error: 'submission_id and path are required' }, { status: 400 })
+  if (!submissionId) {
+    return NextResponse.json({ error: 'submission_id is required' }, { status: 400 })
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = createAdminClient()
 
     // Verify the requester is a participant of this submission
     const { data: submission, error } = await supabase
       .from('work_submissions')
-      .select('id, creative_id, employer_id')
+      .select('id, creative_id, employer_id, files')
       .eq('id', submissionId)
       .single()
 
@@ -59,37 +56,59 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    const isImage = fileType.startsWith('image/')
+    const fileIndex = Number.parseInt(fileId, 10)
+    if (!Number.isInteger(fileIndex) || fileIndex < 0) {
+      return NextResponse.json({ error: 'Invalid file id' }, { status: 400 })
+    }
 
-    if (isImage) {
-      // For images: generate a short-lived signed URL for preview
-      const admin = createAdminClient()
-      const { data: signedUrlData, error: signedError } = await admin.storage
+    const files = Array.isArray(submission.files) ? submission.files as Array<Record<string, unknown>> : []
+    const targetFile = files[fileIndex]
+    const canonicalPath = typeof targetFile?.path === 'string' ? targetFile.path : null
+    const canonicalType = typeof targetFile?.type === 'string' ? targetFile.type : ''
+    const canonicalName = typeof targetFile?.name === 'string' ? targetFile.name : null
+    const canonicalSize = typeof targetFile?.size === 'number' ? targetFile.size : null
+
+    if (!targetFile || !canonicalPath) {
+      return NextResponse.json({ error: 'File not found for submission' }, { status: 404 })
+    }
+
+    // Reject mismatched query path to prevent path-confusion attacks.
+    if (filePath && filePath !== canonicalPath) {
+      return NextResponse.json({ error: 'Invalid file path for submission file' }, { status: 400 })
+    }
+
+    const isImage = canonicalType.startsWith('image/')
+    const isVideo = canonicalType.startsWith('video/')
+    const isAudio = canonicalType.startsWith('audio/')
+
+    if (isImage || isVideo || isAudio) {
+      const { data: signedUrlData, error: signedError } = await supabase.storage
         .from('deliverables-protected')
-        .createSignedUrl(filePath, 300) // 5 minutes
+        .createSignedUrl(canonicalPath, 300)
 
       if (signedError || !signedUrlData?.signedUrl) {
         return NextResponse.json({ error: 'Failed to generate preview URL' }, { status: 500 })
       }
 
+      const previewType = isImage ? 'image' : isVideo ? 'video' : 'audio'
+
       return NextResponse.json({
-        preview_type: 'image',
+        preview_type: previewType,
         preview_url: signedUrlData.signedUrl,
-        name: fileName,
-        type: fileType,
-        size: fileSize ? parseInt(fileSize) : null,
-        watermarked: true,
+        name: canonicalName,
+        type: canonicalType,
+        size: canonicalSize,
+        watermarked: isImage || isVideo,
         expires_in: 300,
       })
     }
 
-    // For non-image files: metadata only
     return NextResponse.json({
       preview_type: 'metadata',
       preview_url: null,
-      name: fileName,
-      type: fileType,
-      size: fileSize ? parseInt(fileSize) : null,
+      name: canonicalName,
+      type: canonicalType,
+      size: canonicalSize,
       watermarked: false,
     })
   } catch (err) {

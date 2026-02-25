@@ -98,7 +98,7 @@ export default function CreateOpportunityPage() {
     category: '',
     budget_min: '',
     budget_max: '',
-    currency: 'USD',
+    currency: 'SLE',
     location: '',
     is_remote: true,
     deadline: '',
@@ -457,7 +457,7 @@ export default function CreateOpportunityPage() {
             </div>
             <div className="flex-shrink-0">
               <div className="flex rounded-xl border border-border/60 overflow-hidden">
-                {['USD', 'SLL', 'EUR', 'GBP'].map((cur) => (
+                {['SLE', 'USD', 'EUR', 'GBP'].map((cur) => (
                   <button
                     key={cur}
                     type="button"

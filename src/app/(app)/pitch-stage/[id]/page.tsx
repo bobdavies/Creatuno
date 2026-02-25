@@ -21,8 +21,10 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { motion, AnimatePresence } from 'motion/react'
+import { MdAttachMoney } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -35,6 +37,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/providers/user-session-provider'
+import { formatCurrency } from '@/lib/currency'
 
 const ease = [0.23, 1, 0.32, 1] as const
 
@@ -52,6 +55,7 @@ interface PitchData {
   status: string
   interest_count: number
   view_count: number
+  total_funded: number | null
   created_at: string
   sender_id: string
   creative_id: string
@@ -65,10 +69,6 @@ interface Interest {
   message: string | null
   created_at: string
   investor: { user_id: string; full_name: string; avatar_url: string | null } | null
-}
-
-function formatCurrency(amount: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
 }
 
 function formatDate(date: string) {
@@ -103,6 +103,11 @@ export default function PitchDetailPage() {
   const [showInterestDialog, setShowInterestDialog] = useState(false)
   const [interestMessage, setInterestMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Funding state
+  const [showFundDialog, setShowFundDialog] = useState(false)
+  const [fundAmount, setFundAmount] = useState('')
+  const [isFunding, setIsFunding] = useState(false)
 
   useEffect(() => {
     loadPitch()
@@ -195,6 +200,35 @@ export default function PitchDetailPage() {
       }
     } catch {
       toast.error('Something went wrong')
+    }
+  }
+
+  const handleFundPitch = async () => {
+    const amount = parseFloat(fundAmount)
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    setIsFunding(true)
+    try {
+      const res = await fetch('/api/payments/pitch-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pitch_id: id, amount }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.redirectUrl) {
+          window.location.href = data.redirectUrl
+        }
+      } else {
+        const data = await res.json()
+        toast.error(data.error || 'Failed to initiate funding')
+      }
+    } catch {
+      toast.error('Something went wrong')
+    } finally {
+      setIsFunding(false)
     }
   }
 
@@ -396,6 +430,25 @@ export default function PitchDetailPage() {
                   <p className="text-xl font-bold text-brand-600 dark:text-brand-400 mt-1">
                     {formatCurrency(pitch.funding_ask, pitch.currency)}
                   </p>
+                  {(pitch.total_funded ?? 0) > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>Funded</span>
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(pitch.total_funded ?? 0, pitch.currency)}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-purple-500 transition-all duration-500"
+                          style={{ width: `${Math.min(100, ((pitch.total_funded ?? 0) / pitch.funding_ask) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {Math.round(((pitch.total_funded ?? 0) / pitch.funding_ask) * 100)}% funded
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -494,6 +547,17 @@ export default function PitchDetailPage() {
             >
               {isInvestor && pitch.status === 'live' && (
                 <>
+                  <Button
+                    className="w-full rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => {
+                      setFundAmount(pitch.funding_ask ? String(pitch.funding_ask) : '')
+                      setShowFundDialog(true)
+                    }}
+                  >
+                    <MdAttachMoney className="w-4 h-4 mr-2" />
+                    Fund This Pitch
+                  </Button>
+
                   {hasExpressedInterest ? (
                     <div className="space-y-2">
                       <div className="rounded-2xl border border-brand-500/30 bg-brand-500/5 p-4 text-center">
@@ -638,6 +702,67 @@ export default function PitchDetailPage() {
                   <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-2" />
                 )}
                 Express Interest
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fund Pitch Dialog */}
+      <Dialog open={showFundDialog} onOpenChange={setShowFundDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fund This Pitch</DialogTitle>
+            <DialogDescription>
+              Support {pitch.creative?.full_name}&apos;s work by funding their pitch. You&apos;ll be redirected to complete payment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/10">
+              <p className="text-sm font-semibold text-foreground">{pitch.title}</p>
+              {pitch.funding_ask && (
+                <p className="text-xs text-brand-600 dark:text-brand-400 mt-1">
+                  Asking: {formatCurrency(pitch.funding_ask, pitch.currency)}
+                </p>
+              )}
+              {(pitch.total_funded ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Already funded: {formatCurrency(pitch.total_funded ?? 0, pitch.currency)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">Amount ({pitch.currency || 'SLE'})</label>
+              <Input
+                type="number"
+                placeholder="Enter amount to fund"
+                value={fundAmount}
+                onChange={(e) => setFundAmount(e.target.value)}
+                className="rounded-xl mt-1.5"
+                min={1}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                A 5% platform fee will be applied. The recipient receives {fundAmount ? formatCurrency(parseFloat(fundAmount) * 0.95, pitch.currency) : '...'}.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowFundDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleFundPitch}
+                disabled={isFunding || !fundAmount || parseFloat(fundAmount) <= 0}
+              >
+                {isFunding ? (
+                  <HugeiconsIcon icon={Loading02Icon} className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <MdAttachMoney className="w-4 h-4 mr-2" />
+                )}
+                Fund Pitch
               </Button>
             </div>
           </div>

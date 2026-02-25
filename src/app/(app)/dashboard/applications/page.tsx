@@ -119,6 +119,7 @@ export default function ApplicationsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+  const [submissionStatusMap, setSubmissionStatusMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     loadApplications()
@@ -130,7 +131,29 @@ export default function ApplicationsPage() {
       const response = await fetch('/api/applications')
       if (response.ok) {
         const data = await response.json()
-        setApplications(data.applications || [])
+        const apps: Application[] = data.applications || []
+        setApplications(apps)
+
+        const acceptedApps = apps.filter(a => a.status === 'accepted')
+        if (acceptedApps.length > 0) {
+          try {
+            const subsRes = await fetch('/api/work-submissions')
+            if (subsRes.ok) {
+              const subsData = await subsRes.json()
+              const subs: { application_id: string; status: string; created_at: string }[] = subsData.submissions || []
+              const statusMap: Record<string, string> = {}
+              for (const app of acceptedApps) {
+                const appSubs = subs
+                  .filter(s => s.application_id === app.id)
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                if (appSubs.length > 0) {
+                  statusMap[app.id] = appSubs[0].status
+                }
+              }
+              setSubmissionStatusMap(statusMap)
+            }
+          } catch { /* silent */ }
+        }
       }
     } catch (error) {
       console.error('Error loading applications:', error)
@@ -508,24 +531,38 @@ export default function ApplicationsPage() {
                           {app.proposed_budget != null && app.proposed_budget > 0 && (
                             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-purple-500/10 dark:bg-brand-500/10 text-brand-purple-600 dark:text-brand-400 font-medium">
                               <HugeiconsIcon icon={SentIcon} className="w-3 h-3" />
-                              Proposed: ${app.proposed_budget.toLocaleString()} {app.opportunity?.currency}
+                              Proposed: {app.opportunity?.currency || 'SLE'} {app.proposed_budget.toLocaleString()}
                         </span>
                     )}
                   </div>
 
-                        {/* Accepted banner */}
-                        {app.status === 'accepted' && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="mb-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20"
-                          >
-                            <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
-                              <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3.5 h-3.5" />
-                              Application accepted — submit your work now!
-                            </p>
-                          </motion.div>
-                        )}
+                        {/* Accepted banner with submission status */}
+                        {app.status === 'accepted' && (() => {
+                          const subStatus = submissionStatusMap[app.id]
+                          const subStatusLabels: Record<string, { label: string; color: string; bg: string }> = {
+                            submitted: { label: 'Work Submitted', color: 'text-brand-purple-600 dark:text-brand-400', bg: 'bg-brand-purple-500/10 border-brand-purple-500/20' },
+                            revision_requested: { label: 'Revision Requested', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
+                            payment_pending: { label: 'Awaiting Payment', color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' },
+                            approved: { label: 'Paid & Complete', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                          }
+                          const subCfg = subStatus ? subStatusLabels[subStatus] : null
+
+                          return (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className={cn(
+                                'mb-3 p-3 rounded-xl border',
+                                subCfg ? subCfg.bg : 'bg-green-500/10 border-green-500/20'
+                              )}
+                            >
+                              <p className={cn('text-xs font-medium flex items-center gap-2', subCfg ? subCfg.color : 'text-green-600 dark:text-green-400')}>
+                                <HugeiconsIcon icon={CheckmarkCircle01Icon} className="w-3.5 h-3.5" />
+                                {subCfg ? subCfg.label : 'Application accepted — submit your work now!'}
+                              </p>
+                            </motion.div>
+                          )
+                        })()}
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2 pt-1 sm:opacity-0 sm:translate-y-1 sm:group-hover:opacity-100 sm:group-hover:translate-y-0 transition-all duration-300">

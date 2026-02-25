@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         description: description.trim(),
         category: category || null,
         funding_ask: funding_ask ? parseFloat(funding_ask) : null,
-        currency: currency || 'USD',
+        currency: currency || 'SLE',
         cover_image: cover_image || null,
         video_url: video_url || null,
         skills: skills || [],

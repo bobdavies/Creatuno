@@ -1,7 +1,7 @@
 'use client'
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AlertCircleIcon, ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp01Icon, ArrowUpDownIcon, CancelCircleIcon, CheckmarkCircle01Icon, Clock01Icon, Download01Icon, FileAttachmentIcon, LinkSquare01Icon, Loading02Icon, Message01Icon, PackageIcon, Refresh01Icon, RotateLeft01Icon, Search01Icon, SparklesIcon, ViewIcon } from "@hugeicons/core-free-icons";
+import { AlertCircleIcon, ArrowDown01Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowUp01Icon, ArrowUpDownIcon, CancelCircleIcon, CheckmarkCircle01Icon, Clock01Icon, LinkSquare01Icon, Loading02Icon, Message01Icon, PackageIcon, Refresh01Icon, RotateLeft01Icon, Search01Icon, SparklesIcon, ViewIcon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { MdAttachMoney } from 'react-icons/md'
@@ -31,6 +31,7 @@ import { toast } from 'sonner'
 import { useSession } from '@/components/providers/user-session-provider'
 import { formatDistanceToNow } from '@/lib/format-date'
 import { cn } from '@/lib/utils'
+import DeliverablePreview from '@/components/DeliverablePreview'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -946,7 +947,7 @@ function ApplicationRow({
                                 {app.proposed_budget > 0 && (
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 ml-auto sm:ml-0">
                                     <MdAttachMoney className="w-3 h-3" />
-                  <span className="font-medium text-foreground">${app.proposed_budget.toLocaleString()}</span>
+                  <span className="font-medium text-foreground">Le {app.proposed_budget.toLocaleString()}</span>
                                   </span>
                                 )}
             </div>
@@ -1140,40 +1141,11 @@ function ApplicationRow({
                                     )}
 
                                     {sub.files && sub.files.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                                        {sub.files.map((file, idx) => {
-                              const isProtected = file.protected || file.bucket === 'deliverables-protected'
-                              const isImage = file.type?.startsWith('image/')
-
-                              if (filesReleased || !isProtected) {
-                                const downloadUrl = isProtected
-                                  ? `/api/deliverables/download/${idx}?submission_id=${sub.id}&path=${encodeURIComponent(file.path || '')}`
-                                  : file.url
-                                return (
-                                  <a key={idx} href={downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background border border-emerald-500/40 hover:border-emerald-500/60 transition-colors text-[10px] group/file">
-                                    <HugeiconsIcon icon={FileAttachmentIcon} className="w-3 h-3 text-emerald-500" />
-                                    <span className="text-foreground truncate max-w-[100px]">{file.name}</span>
-                                    <HugeiconsIcon icon={Download01Icon} className="w-2.5 h-2.5 text-emerald-500" />
-                                  </a>
-                                )
-                              }
-
-                              return (
-                                <div key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-background border border-border/50 text-[10px]" title="Preview only — pay to download">
-                                  <HugeiconsIcon icon={FileAttachmentIcon} className="w-3 h-3 text-muted-foreground" />
-                                  <span className="text-foreground truncate max-w-[100px]">{file.name}</span>
-                                  {isImage ? (
-                                    <HugeiconsIcon icon={ViewIcon} className="w-2.5 h-2.5 text-brand-500" />
-                                  ) : (
-                                    <svg className="w-2.5 h-2.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                  )}
-                                </div>
-                              )
-                            })}
-                            {!filesReleased && sub.files.some(f => f.protected || f.bucket === 'deliverables-protected') && (
-                              <span className="text-[10px] text-muted-foreground italic self-center ml-1">Pay to download</span>
-                            )}
-                                      </div>
+                          <DeliverablePreview
+                            files={sub.files}
+                            submissionId={sub.id}
+                            filesReleased={filesReleased}
+                          />
                                     )}
 
                                     {sub.feedback && (
