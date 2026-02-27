@@ -56,15 +56,6 @@ interface Opportunity {
   }
 }
 
-interface ServerPortfolio {
-  id: string
-  title: string
-  description: string | null
-  tagline: string | null
-  slug: string
-  is_public: boolean
-}
-
 interface WorkSubmissionFile {
   url: string | null
   path?: string
@@ -136,20 +127,12 @@ export default function OpportunityDetailPage() {
 
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isApplyOpen, setIsApplyOpen] = useState(false)
   const [hasApplied, setHasApplied] = useState(false)
   const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
   const [applicationId, setApplicationId] = useState<string | null>(null)
 
   // Auth-gate prompt
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
-
-  // Application form state
-  const [portfolios, setPortfolios] = useState<ServerPortfolio[]>([])
-  const [selectedPortfolio, setSelectedPortfolio] = useState('')
-  const [coverLetter, setCoverLetter] = useState('')
-  const [proposedBudget, setProposedBudget] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Work submission state
   const [isSubmitWorkOpen, setIsSubmitWorkOpen] = useState(false)
@@ -166,10 +149,9 @@ export default function OpportunityDetailPage() {
     loadOpportunity()
   }, [opportunityId])
 
-  // Gate portfolio & application checks behind auth readiness
+  // Gate application check behind auth readiness
   useEffect(() => {
     if (sessionUserId) {
-      loadPortfolios()
       checkExistingApplication()
     }
   }, [opportunityId, sessionUserId])
@@ -186,20 +168,6 @@ export default function OpportunityDetailPage() {
       console.error('Error loading opportunity:', error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const loadPortfolios = async () => {
-    try {
-      const response = await fetch('/api/portfolios')
-      if (response.ok) {
-        const data = await response.json()
-        const serverPortfolios: ServerPortfolio[] = data.portfolios || []
-        setPortfolios(serverPortfolios)
-        if (serverPortfolios.length > 0) setSelectedPortfolio(serverPortfolios[0].id)
-      }
-    } catch (error) {
-      console.error('Error loading portfolios:', error)
     }
   }
 
@@ -328,46 +296,6 @@ export default function OpportunityDetailPage() {
       return URL.createObjectURL(file)
     }
     return null
-  }
-
-  const handleApply = async () => {
-    if (!selectedPortfolio) { toast.error('Please select a portfolio to showcase'); return }
-    if (!coverLetter.trim()) { toast.error('Please write a cover letter'); return }
-    setIsSubmitting(true)
-    try {
-      const response = await fetch('/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          opportunity_id: opportunityId,
-          portfolio_id: selectedPortfolio,
-          cover_letter: coverLetter.trim(),
-          proposed_budget: proposedBudget ? parseFloat(proposedBudget) : null,
-        }),
-      })
-      if (response.ok) {
-        toast.success('Application submitted successfully!')
-        setHasApplied(true)
-        setIsApplyOpen(false)
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to submit application')
-      }
-    } catch (error) {
-      console.error('Error submitting application:', error)
-      toast.error('Failed to submit application')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // When unauthenticated user clicks apply
-  const handleApplyClick = () => {
-    if (!isAuthenticated) {
-      setShowSignInPrompt(true)
-    } else {
-      setIsApplyOpen(true)
-    }
   }
 
   // ─── Loading & Not Found ──────────────────────────────────────────────────
@@ -1005,95 +933,12 @@ export default function OpportunityDetailPage() {
                         </p>
                       </div>
 
-                      <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
-                        <DialogTrigger asChild>
-                          <Button className="w-full bg-brand-500 hover:bg-brand-600 rounded-xl h-12 text-base font-bold shadow-lg shadow-brand-purple-500/20 dark:shadow-brand-500/20">
-                            <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-2" />
-                            Apply Now
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>Apply for: {opportunity.title}</DialogTitle>
-                            <DialogDescription>Submit your application with your best portfolio</DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            {/* Portfolio Selector */}
-                            <div className="space-y-2">
-                              <Label>Select Portfolio <span className="text-red-500">*</span></Label>
-                              {portfolios.length > 0 ? (
-                                <div className="space-y-2">
-                                  {portfolios.map((p) => (
-                                    <button
-                                      key={p.id}
-                                      type="button"
-                                      onClick={() => setSelectedPortfolio(p.id)}
-                                      className={cn(
-                                        'w-full text-left p-3 rounded-xl border-2 transition-all',
-                                        selectedPortfolio === p.id
-                                          ? 'border-brand-500 bg-brand-purple-500/5 dark:bg-brand-500/5'
-                                          : 'border-border/50 hover:border-brand-purple-500/30 dark:border-brand-purple-500/30 dark:border-brand-500/30'
-                                      )}
-                                    >
-                                      <p className="text-sm font-semibold text-foreground">{p.title || 'Untitled Portfolio'}</p>
-                                      {p.tagline && <p className="text-xs text-muted-foreground mt-0.5">{p.tagline}</p>}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="p-5 rounded-xl bg-muted/50 border border-dashed border-border text-center">
-                                  <HugeiconsIcon icon={FileAttachmentIcon} className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                                  <p className="text-sm text-muted-foreground mb-2">No portfolios yet</p>
-                                  <Button variant="outline" size="sm" className="rounded-full" asChild>
-                                    <Link href="/dashboard/portfolios/new">Create Portfolio</Link>
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Cover Letter */}
-                            <div className="space-y-2">
-                              <Label>Cover Letter <span className="text-red-500">*</span></Label>
-                              <Textarea
-                                placeholder="Tell them why you're the perfect fit..."
-                                value={coverLetter}
-                                onChange={(e) => setCoverLetter(e.target.value)}
-                                rows={6}
-                                className="focus:ring-brand-purple-500/30 dark:ring-brand-500/30"
-                              />
-                              <p className="text-[10px] text-muted-foreground">Explain your relevant experience and interest</p>
-                            </div>
-
-                            {/* Proposed Budget */}
-                            {opportunity.type !== 'job' && (
-                              <div className="space-y-2">
-                                <Label>Proposed Budget ({opportunity.currency})</Label>
-                                <Input
-                                  type="number"
-                                  placeholder={`${opportunity.budgetMin} - ${opportunity.budgetMax}`}
-                                  value={proposedBudget}
-                                  onChange={(e) => setProposedBudget(e.target.value)}
-                                  className="focus:ring-brand-purple-500/30 dark:ring-brand-500/30"
-                                />
-                                <p className="text-[10px] text-muted-foreground">
-                                  Range: ${opportunity.budgetMin} - ${opportunity.budgetMax} {opportunity.currency}
-                                </p>
-                              </div>
-                            )}
-
-                            <div className="flex gap-2 pt-2">
-                              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setIsApplyOpen(false)}>Cancel</Button>
-                              <Button
-                                className="flex-1 bg-brand-500 hover:bg-brand-600 rounded-xl"
-                                onClick={handleApply}
-                                disabled={isSubmitting || !selectedPortfolio || !coverLetter.trim()}
-                              >
-                                {isSubmitting ? (<><HugeiconsIcon icon={Loading02Icon} className="w-4 h-4 mr-2 animate-spin" />Submitting...</>) : (<><HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-2" />Submit Application</>)}
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button className="w-full bg-brand-500 hover:bg-brand-600 rounded-xl h-12 text-base font-bold shadow-lg shadow-brand-purple-500/20 dark:shadow-brand-500/20" asChild>
+                        <Link href={`/opportunities/${opportunityId}/apply`}>
+                          <HugeiconsIcon icon={SentIcon} className="w-4 h-4 mr-2" />
+                          Apply Now
+                        </Link>
+                      </Button>
                     </>
                   ) : !isAuthenticated ? (
                     /* ── Not authenticated: Sign-in prompt ── */
